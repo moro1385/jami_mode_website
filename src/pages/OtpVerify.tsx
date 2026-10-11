@@ -32,15 +32,15 @@ export default function OtpVerify() {
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (code.length !== 6) return setError("Enter the six-digit code.");
+    if (code.length !== 6) return setError("کد ۶ رقمی را وارد کنید.");
     setError("");
     setLoading(true);
     try {
       await verifyOtp(phone, code);
-      toast.success("You're signed in");
+      toast.success("شما وارد شدید");
       navigate("/account", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not verify the code. Please try again.");
+      setError(err instanceof Error ? err.message : "تایید کد انجام نشد. لطفاً دوباره تلاش کنید.");
       setCode("");
     } finally {
       setLoading(false);
@@ -55,10 +55,10 @@ export default function OtpVerify() {
       setOtpSentAt(phone);
       setRemaining(result.expiresInSeconds);
       setCode("");
-      if (result.devCode) toast.info(`Demo code: ${result.devCode}`, { duration: 15000 });
-      else toast.success("A new code is on its way");
+      if (result.devCode) toast.info(`کد آزمایشی: ${result.devCode}`, { duration: 15000 });
+      else toast.success("کد جدید ارسال شد");
     } catch {
-      setError("Could not resend the code. Please try again.");
+      setError("کد مجدداً ارسال نشد. لطفاً دوباره تلاش کنید.");
     } finally {
       setResending(false);
     }
@@ -86,21 +86,26 @@ export default function OtpVerify() {
     >
       <form onSubmit={handleVerify} className="space-y-6" noValidate>
         <div className="space-y-2">
-          <label htmlFor="otp" className="block text-[11px] text-muted-foreground">
+          <label htmlFor="otp" className="block text-xs font-medium text-foreground/80">
             کد تایید
           </label>
           <input
             id="otp"
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) => {
+              const latinDigits = e.target.value.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (d) =>
+                String("0123456789"[d.charCodeAt(0) & 0xf])
+              );
+              setCode(latinDigits.replace(/\D/g, "").slice(0, 6));
+            }}
             inputMode="numeric"
             autoComplete="one-time-code"
             autoFocus
             placeholder="––––––"
             disabled={loading}
             aria-invalid={!!error}
-            className={`w-full h-14 bg-background border px-4 text-center text-2xl tracking-[0.5em] text-foreground outline-none transition-colors focus:border-foreground ${
-              error ? "border-destructive" : "border-border"
+            className={`w-full h-14 bg-white border border-foreground/25 shadow-sm rounded-xl px-4 text-center text-2xl tracking-[0.5em] text-foreground outline-none transition-colors hover:border-foreground/45 focus:border-accent focus:ring-2 focus:ring-accent/20 ${
+              error ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""
             }`}
           />
           {error && <p className="text-xs text-destructive">{error}</p>}
@@ -109,7 +114,7 @@ export default function OtpVerify() {
         <button
           type="submit"
           disabled={loading || code.length !== 6}
-          className="w-full h-12 bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+          className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "تایید و ادامه"}
         </button>

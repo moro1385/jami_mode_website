@@ -1,11 +1,18 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Eye, EyeOff, Loader2, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, MessageSquare, Smartphone } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
 import FormField from "@/components/auth/FormField";
 import { useAuthStore } from "@/stores/authStore";
 import { PHONE_HELP, isValidPhone } from "@/lib/phone";
 import { toast } from "sonner";
+
+const sanitizePhoneInput = (val: string) => {
+  const latinDigits = val.replace(/[\u0660-\u0669\u06F0-\u06F9]/g, (d) =>
+    String("0123456789"[d.charCodeAt(0) & 0xf])
+  );
+  return latinDigits.replace(/[^\d+ ]/g, "");
+};
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -27,7 +34,7 @@ export default function SignIn() {
     return Object.keys(next).length === 0;
   };
 
-const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     if (!validate()) return;
@@ -56,48 +63,51 @@ const handleSubmit = async (e: React.FormEvent) => {
   };
 
   return (
-    <div>
-      <AuthShell
-        eyebrow="حساب کاربری"
-        title="ورود"
-        subtitle="از شماره موبایل و رمز عبور خود استفاده کنید یا با یک کد یک‌بار مصرف وارد شوید."
-        footer={
-          <p className="text-sm text-muted-foreground">
-            حساب کاربری ندارید؟{" "}
-            <Link to="/signup" className="text-foreground underline underline-offset-4 hover:text-accent transition-colors">
-              ثبت نام
-            </Link>
-          </p>
-        }
-      >
-        <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-          <FormField
-            label="شماره موبایل"
+    <AuthShell
+      eyebrow="حساب کاربری"
+      title="ورود"
+      subtitle="از شماره موبایل و رمز عبور خود استفاده کنید یا با یک کد یک‌بار مصرف وارد شوید."
+      footer={
+        <p className="text-sm text-muted-foreground">
+          حساب کاربری ندارید؟{" "}
+          <Link to="/signup" className="text-foreground underline underline-offset-4 hover:text-accent transition-colors">
+            ثبت نام
+          </Link>
+        </p>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+        <FormField
+          label="شماره موبایل"
           type="tel"
           inputMode="tel"
           autoComplete="tel"
-            placeholder="0912 345 6789"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            error={errors.phone}
-            hint={PHONE_HELP}
-            disabled={loading}
-          />
+          dir="ltr"
+          className="text-left"
+          placeholder="0912 345 6789"
+          value={phone}
+          onChange={(e) => setPhone(sanitizePhoneInput(e.target.value))}
+          error={errors.phone}
+          hint={PHONE_HELP}
+          disabled={loading}
+          leading={<Smartphone className="w-4 h-4" />}
+        />
 
-          <FormField
-            label="رمز عبور"
-            type={showPassword ? "text" : "password"}
-            autoComplete="current-password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            error={errors.password}
-            disabled={loading}
-            trailing={
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                aria-label={showPassword ? "Hide password" : "Show password"}
+        <FormField
+          label="رمز عبور"
+          type={showPassword ? "text" : "password"}
+          autoComplete="current-password"
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          error={errors.password}
+          disabled={loading}
+          leading={<Lock className="w-4 h-4" />}
+          trailing={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "پنهان کردن رمز عبور" : "نمایش رمز عبور"}
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -105,35 +115,34 @@ const handleSubmit = async (e: React.FormEvent) => {
           }
         />
 
-          {formError && (
-            <p className="border border-destructive/40 bg-destructive/5 px-4 py-3 text-xs text-destructive">
-              {formError}
-            </p>
-          )}
+        {formError && (
+          <p className="border border-destructive/40 bg-destructive/5 px-4 py-3 text-xs text-destructive rounded-xl">
+            {formError}
+          </p>
+        )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full h-12 bg-primary text-primary-foreground text-xs hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ورود"}
-          </button>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ورود"}
+        </button>
 
-          <div className="flex items-center gap-4">
-            <span className="h-px flex-1 bg-border" />
-            <span className="text-[10px] text-muted-foreground">یا</span>
-            <span className="h-px flex-1 bg-border" />
-          </div>
+        <div className="flex items-center gap-4">
+          <span className="h-px flex-1 bg-border" />
+          <span className="text-[10px] text-muted-foreground">یا</span>
+          <span className="h-px flex-1 bg-border" />
+        </div>
 
-          <Link
-            to="/signin/otp"
-            className="w-full h-12 border border-foreground text-foreground text-xs hover:bg-foreground hover:text-primary-foreground transition-colors flex items-center justify-center gap-2"
-          >
-            <MessageSquare className="w-4 h-4" />
-            ورود با رمز یک‌بار مصرف
-          </Link>
-        </form>
-      </AuthShell>
-    </div>
+        <Link
+          to="/signin/otp"
+          className="w-full h-12 rounded-full border border-foreground text-foreground text-sm font-medium hover:bg-foreground hover:text-primary-foreground transition-colors flex items-center justify-center gap-2"
+        >
+          <MessageSquare className="w-4 h-4" />
+          ورود با رمز یک‌بار مصرف
+        </Link>
+      </form>
+    </AuthShell>
   );
 }
