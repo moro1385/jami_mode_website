@@ -15,8 +15,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import FadeIn from "@/components/FadeIn";
-import { getCollection } from "@/data/collections";
-import { getCollectionImage } from "@/data/collectionImages";
 import SEO from "@/components/SEO";
 
 export default function Shop() {
@@ -88,19 +86,6 @@ export default function Shop() {
     "kids": "بچگانه",
   };
 
-  const categoryDescriptions: Record<string, string> = {
-    socks: "جوراب‌های {dept} با کیفیت بالا، از الیاف نرم و بادوام، مناسب استفاده روزمره.",
-    underwear: "لباس‌های زیر {dept} با پارچه‌ای نرم و راحت، طراحی‌شده برای آسایش تمام روز.",
-    undershirts: "زیرپوش‌های {dept}، سبک و تنفس‌پذیر، لایه‌ی اول ایده‌آل زیر لباس.",
-    pants: "شلوارهای {dept} با برش راحت و پارچه‌ی باکیفیت، مناسب استفاده روزانه.",
-    shorts: "شلوارک‌های {dept}، سبک و آزاد، انتخابی مناسب برای فعالیت و راحتی.",
-    "t-shirts": "تیشرت‌های {dept} با طرح‌های ساده و پارچه‌ی نخی باکیفیت.",
-    "tank-tops": "تاپ‌های {dept}، سبک و خنک، مناسب فصل گرم.",
-    sets: "ست‌های کامل {dept}، ترکیبی هماهنگ برای یک انتخاب راحت.",
-  };
-
-  const collection = categoryQuery ? getCollection(categoryQuery) : undefined;
-
   const dynamicTitle = departmentQuery || categoryQuery
     ? `${categoryQuery ? categoryNames[categoryQuery] || categoryQuery : ""} ${departmentQuery ? departmentNames[departmentQuery] || departmentQuery : ""}`.trim()
     : "فروشگاه";
@@ -112,48 +97,15 @@ export default function Shop() {
   return (
     <div className="min-h-screen bg-[hsl(var(--warm-bg))] relative z-0">
       <SEO title={dynamicTitle} description={dynamicDesc} />
-      {/* Header Section */}
-      <div className="py-16 px-6 text-center w-full flex flex-col md:flex-row items-center justify-center md:justify-between gap-6">
-<div className="w-full flex flex-col justify-center items-center py-4">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground text-center">
-              {departmentQuery || categoryQuery
-                ? `${categoryQuery ? categoryNames[categoryQuery] || categoryQuery : ""} ${departmentQuery ? departmentNames[departmentQuery] || departmentQuery : ""}`.trim()
-                : "جوراب، لباس زیر، زیرپوش، لباس راحتی و شلوارک"}
-            </h1>
-            {departmentQuery && categoryQuery && categoryDescriptions[categoryQuery] && (
-              <p className="max-w-2xl mx-auto mt-4 text-base text-muted-foreground text-center">
-                {categoryDescriptions[categoryQuery].replace("{dept}", departmentNames[departmentQuery] || "")}
-              </p>
-            )}
-          </div>
-        {/* Top Header Image Placeholder */}
-{/* Top Promo Images */}
-<div className="flex gap-4 shrink-0">
-  {/* بنر بالای صفحه - عکس اول */}
-  <a href="#" className="block w-[380px] h-[380px] overflow-hidden rounded-2xl hover:opacity-90 transition-opacity shadow-sm">
-    <img 
-src={getCollectionImage(departmentQuery, categoryQuery) || "/socks_clipcart.jpg"}
-loading="lazy"
-width={380}
-height={380}
-onError={(e) => {
-  const fallback = collection?.image || "/socks_clipcart.jpg";
-  if (e.currentTarget.src !== fallback) {
-    e.currentTarget.src = fallback;
-  }
-}}
-      alt={categoryQuery ? (categoryNames[categoryQuery] || categoryQuery) : "دسته‌بندی"}
-      className="w-full h-full object-cover"
-    />
-  </a>
-</div>
-
-      
-      </div>
+      <h1 className="sr-only">
+        {departmentQuery || categoryQuery
+          ? `${categoryQuery ? categoryNames[categoryQuery] || categoryQuery : ""} ${departmentQuery ? departmentNames[departmentQuery] || departmentQuery : ""}`.trim()
+          : "جوراب، لباس زیر، زیرپوش، لباس راحتی و شلوارک"}
+      </h1>
 
       {/* Main Content Layout */}
-      <div className="w-full px-6 pb-24">
-        <div className="flex flex-col lg:flex-row gap-8 mt-6 md:mt-12">
+      <div className="w-full px-6 pt-8 md:pt-12 pb-24">
+        <div className="flex flex-col lg:flex-row gap-8">
 
 
 
