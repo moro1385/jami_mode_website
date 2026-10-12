@@ -8,37 +8,45 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string;
   hint?: string;
   trailing?: ReactNode;
+  leading?: ReactNode;
 }
 
 const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
-  ({ label, error, hint, trailing, className, id, ...props }, ref) => {
+  ({ label, error, hint, trailing, leading, className, id, disabled, ...props }, ref) => {
     const generatedId = useId();
     const inputId = id ?? generatedId;
     return (
       <div className="space-y-2">
         <label
           htmlFor={inputId}
-          className="block text-[11px] text-muted-foreground"
+          className="block text-xs font-medium text-foreground/80"
         >
           {label}
         </label>
         <div className="relative">
+          {leading && (
+            <div className="absolute inset-y-0 start-0 flex items-center ps-3.5 text-muted-foreground pointer-events-none">
+              {leading}
+            </div>
+          )}
           <input
             ref={ref}
             id={inputId}
+            disabled={disabled}
             aria-invalid={!!error}
             aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
             className={cn(
-              "w-full h-12 bg-background border px-4 text-sm text-foreground placeholder:text-muted-foreground/60 rounded-xl",
-              "transition-colors outline-none focus:border-foreground",
-              error ? "border-destructive focus:border-destructive" : "border-border",
-              trailing && "pr-12",
+              "w-full h-12 bg-white border border-foreground/25 shadow-sm rounded-xl px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors hover:border-foreground/45 focus:border-accent focus:ring-2 focus:ring-accent/20",
+              error && "border-destructive focus:border-destructive focus:ring-destructive/20",
+              disabled && "opacity-60 cursor-not-allowed",
+              leading && "ps-11",
+              trailing && "pe-12",
               className
             )}
             {...props}
           />
           {trailing && (
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3">{trailing}</div>
+            <div className="absolute inset-y-0 end-0 flex items-center pe-3">{trailing}</div>
           )}
         </div>
         {error ? (
