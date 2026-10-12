@@ -30,4 +30,4 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
-export const PHONE_HELP = "مثال: 0912 345 6789";
+export const PHONE_HELP = "";
