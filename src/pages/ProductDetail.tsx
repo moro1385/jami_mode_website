@@ -65,7 +65,7 @@ export default function ProductDetail() {
 
   const handleAddToCart = () => {
     if (!isAuthenticated) {
-      toast.error("Auth Required", { description: "Please sign in to add to cart." });
+      toast.error("نیاز به ورود", { description: "برای افزودن محصول به سبد خرید، لطفاً ابتدا وارد حساب کاربری خود شوید." });
       return;
     }
     if (isSoldOut) return;
