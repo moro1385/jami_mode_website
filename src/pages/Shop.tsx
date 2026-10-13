@@ -136,17 +136,15 @@ export default function Shop() {
           </div>
 
           {/* Desktop Sidebar */}
-          <div className="hidden lg:block w-64 shrink-0">
-            <div className="sticky top-24 bg-card border-x border-y border-border rounded-2xl p-5 shadow-sm">
-              <h2 className="text-lg font-semibold mb-4">فیلتر</h2>
-              <ShopFilters
-                selectedFilters={selectedFilters}
-                onFilterChange={handleFilterChange}
-                department={departmentQuery}
-                category={categoryQuery}
-              />
-            </div>
-          </div>
+          <aside className="hidden lg:block w-64 shrink-0 lg:sticky lg:top-28 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:overscroll-contain thin-scrollbar pl-1 bg-card border border-border rounded-2xl p-5 shadow-sm">
+            <h2 className="text-lg font-semibold mb-4">فیلتر</h2>
+            <ShopFilters
+              selectedFilters={selectedFilters}
+              onFilterChange={handleFilterChange}
+              department={departmentQuery}
+              category={categoryQuery}
+            />
+          </aside>
 
           {/* Main Product Area */}
           <div className="flex-1">
