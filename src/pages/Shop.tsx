@@ -136,7 +136,7 @@ export default function Shop() {
           </div>
 
           {/* Desktop Sidebar */}
-          <aside className="hidden lg:block w-64 shrink-0 lg:sticky lg:top-28 lg:self-start lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:overscroll-contain thin-scrollbar pl-1 bg-card border border-border rounded-2xl p-5 shadow-sm">
+          <aside className="hidden lg:block w-64 shrink-0 bg-card border border-border rounded-2xl p-5 shadow-sm lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto overscroll-contain pl-2 [scrollbar-width:thin]">
             <h2 className="text-lg font-semibold mb-4">فیلتر</h2>
             <ShopFilters
               selectedFilters={selectedFilters}
