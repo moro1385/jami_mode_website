@@ -7,6 +7,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { getBrandOptions } from "@/lib/brands";
+import { cn } from "@/lib/utils";
 
 const getFilterCategories = (department?: string | null, category?: string | null) => {
   let typeOptions: { value: string; label: string }[] = [];
@@ -212,7 +213,7 @@ export function ShopFilters({
   const filterCategories = getFilterCategories(department, category);
 
   return (
-    <div className={className}>
+    <div className={cn("w-full", className)}>
       <Accordion type="multiple" defaultValue={["type", "brand", "pattern", "size"]} className="w-full">
         {filterCategories.map((cat) => (
           <AccordionItem key={cat.id} value={cat.id}>
@@ -246,5 +247,3 @@ export function ShopFilters({
     </div>
   );
 }
-
-// test_git_hub
