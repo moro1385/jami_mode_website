@@ -25,6 +25,5 @@ dist-ssr
 .env
 public/sitemap.xml
 
-package-lock.json
 # Isolated test build artifacts
 dist-local-test
