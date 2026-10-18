@@ -1,3 +1,4 @@
+import { fulfillmentOptions } from "@/lib/orderFulfillment";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -71,16 +72,22 @@ export default function AdminOrders() {
   }
 
   async function updateOrderStatus(id: string, newStatus: string) {
+    const order = orders.find(o => o.id === id);
+    if (!order || !fulfillmentOptions(order.status).includes(newStatus) || newStatus === order.status) return;
     try {
       // Optimistic update
       setOrders(orders.map(o => o.id === id ? { ...o, status: newStatus } : o));
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .update({ status: newStatus })
-        .eq("id", id);
+        .eq("id", id)
+        .eq("status", order.status)
+        .select("id")
+        .single();
 
       if (error) throw error;
+      if (!data) throw new Error("Order status was not saved");
       toast.success(`وضعیت سفارش به‌روز شد به ${newStatus}`);
     } catch (err: unknown) {
       console.error("Error updating status:", err);
@@ -171,18 +178,20 @@ export default function AdminOrders() {
                     <TableCell>
                       <Select
                         value={order.status}
+                        disabled={fulfillmentOptions(order.status).length === 1}
                         onValueChange={(value) => updateOrderStatus(order.id, value)}
                       >
                         <SelectTrigger className="w-[130px] h-8 text-xs">
                           <SelectValue placeholder="وضعیت" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="pending">در انتظار</SelectItem>
-                          <SelectItem value="processing">در حال پردازش</SelectItem>
-                          <SelectItem value="confirmed">تایید شده</SelectItem>
-                          <SelectItem value="shipped">ارسال شده</SelectItem>
-                          <SelectItem value="delivered">تحویل داده شده</SelectItem>
-                          <SelectItem value="cancelled">لغو شده</SelectItem>
+                          {fulfillmentOptions(order.status).map(status => (
+                            <SelectItem key={status} value={status}>{({
+                              pending_payment: "در انتظار پرداخت", payment_failed: "پرداخت ناموفق",
+                              pending: "در انتظار", confirmed: "تایید شده", processing: "در حال پردازش",
+                              shipped: "ارسال شده", delivered: "تحویل داده شده", cancelled: "لغو شده",
+                            } as Record<string, string>)[status] || status}</SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </TableCell>

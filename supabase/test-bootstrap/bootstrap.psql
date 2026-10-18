@@ -1,0 +1,32 @@
+\set ON_ERROR_STOP on
+-- Review connection independently. target_project is an assertion, not proof of connection identity.
+\ir preflight.sql
+-- Baseline files have no top-level transactions; apply this phase atomically.
+BEGIN;
+SET LOCAL lock_timeout = '5s';
+\ir migrations/20260817121647_cb255752-e179-4ab4-8fd9-fa53002fe795.sql
+\ir migrations/20240101000000_add_product_flags_and_images.sql
+\ir migrations/20240101000001_fix_profiles_rls.sql
+\ir migrations/20260817121702_1fe1a749-b749-4285-a54f-8c8a6d547e42.sql
+\ir migrations/20260817121723_ea2e2174-8295-43d6-bdb8-1b04e1a89bc0.sql
+\ir migrations/20260817121800_add_shopify_variant_id.sql
+\ir migrations/20260817122000_add_tags_to_products.sql
+\ir migrations/20260817122100_add_product_details.sql
+\ir migrations/20260817122200_add_product_colors.sql
+\ir migrations/20260901000000_checkout_schema.sql
+\ir migrations/20260901000001_checkout_schema_fix.sql
+\ir migrations/20260902000000_fix_orders_rls_and_address.sql
+\ir migrations/20260903000000_create_tickets_table.sql
+\ir migrations/20260904000000_change_brand_to_array.sql
+\ir migrations/20260911000000_create_return_requests.sql
+\ir migrations/20260912000000_create_user_messages_table.sql
+\ir migrations/20260920154818_replace_carts_schema.sql
+\ir migrations/20260921000000_add_out_of_stock.sql
+\ir migrations/20260921122000_add_bitpay_columns.sql
+\ir migrations/20260922000000_create_wallet_topups.sql
+COMMIT;
+-- The two security files and fixes.sql each own their transaction.
+\ir migrations/20261017143036_first_security_containment.sql
+\ir migrations/20261017180000_trusted_checkout.sql
+\ir fixes.sql
+NOTIFY pgrst, 'reload schema';

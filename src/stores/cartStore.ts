@@ -1,3 +1,4 @@
+import { browserStorageKey } from '../../config/supabase-public.js';
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
@@ -63,7 +64,7 @@ export const useCartStore = create<CartStore>()(
       setItems: (items) => set({ items }),
     }),
     {
-      name: "storefront-cart",
+      name: browserStorageKey("storefront-cart", import.meta.env.MODE),
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ items: state.items }),
     }

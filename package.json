@@ -11,7 +11,15 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:security:db": "node scripts/test-security-db.mjs",
+    "typecheck": "tsc --project tsconfig.app.json --noEmit --incremental false",
+    "test:watch": "vitest",
+    "test:checkout:db": "node scripts/test-trusted-checkout-db.mjs",
+    "build:isolated": "node scripts/build-isolated.mjs production",
+    "test:bootstrap": "node scripts/check-test-bootstrap.mjs",
+    "test:local": "node scripts/local-test.mjs",
+    "test:bootstrap:db": "node scripts/test-bootstrap-db.mjs",
+    "build:local-test:offline": "node scripts/build-local-test-offline.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

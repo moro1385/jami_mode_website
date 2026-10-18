@@ -1,3 +1,4 @@
+import { authPath } from "@/lib/authReturn";
 import { useEffect } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -17,7 +18,7 @@ export default function RequireAuth() {
   }, [isAuthenticated, user, bootstrap]);
 
   if (!isAuthenticated) {
-    return <Navigate to="/signin" state={{ from: location.pathname }} replace />;
+    return <Navigate to={authPath("/signin", location.pathname + location.search + location.hash)} replace />;
   }
 
   if (!user || isBootstrapping) {

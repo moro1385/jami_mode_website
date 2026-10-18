@@ -1,5 +1,6 @@
+import { authPath, authReturn } from "@/lib/authReturn";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AlertCircle, Check, Eye, EyeOff, Loader2, Lock, Smartphone, User, X } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
 import FormField from "@/components/auth/FormField";
@@ -17,6 +18,8 @@ const sanitizePhoneInput = (val: string) => {
 
 export default function SignUp() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const destination = authReturn(location.search);
   const signUp = useAuthStore((s) => s.signUp);
 
   const [form, setForm] = useState({
@@ -79,7 +82,7 @@ export default function SignUp() {
       toast.success("حساب کاربری ایجاد شد. لطفاً شماره موبایل خود را تأیید کنید.");
       // Navigate to OTP verify passing the phone number in state
       const { normalizePhone } = await import("@/lib/phone");
-      navigate("/signin/otp/verify", { state: { phone: normalizePhone(finalPhone) }, replace: true });
+      navigate(authPath("/signin/otp/verify", destination), { state: { phone: normalizePhone(finalPhone) }, replace: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "خطایی رخ داد. لطفاً دوباره تلاش کنید.";
       setFormError(msg);
@@ -114,7 +117,7 @@ export default function SignUp() {
         <p className="text-sm text-muted-foreground">
           از قبل حساب کاربری دارید؟{" "}
           <Link
-            to="/signin"
+            to={authPath("/signin", destination)}
             className="text-foreground underline underline-offset-4 hover:text-accent transition-colors"
           >
             ورود

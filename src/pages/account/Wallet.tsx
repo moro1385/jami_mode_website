@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
-import { ArrowDownLeft, ArrowUpRight, Loader2, Wallet as WalletIcon } from "lucide-react";
+import { useEffect } from "react";
+import { ArrowDownLeft, ArrowUpRight, Wallet as WalletIcon } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import AccountLayout from "@/components/account/AccountLayout";
 import { useAuthStore } from "@/stores/authStore";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 const formatAmount = (amount: number) =>
@@ -15,9 +14,6 @@ export default function Wallet() {
   const user = useAuthStore((s) => s.user);
   const wallet = user?.wallet;
   const transactions = wallet?.transactions ?? [];
-
-  const [topUpAmount, setTopUpAmount] = useState("");
-  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     const topupStatus = searchParams.get("topup");
@@ -31,63 +27,10 @@ export default function Wallet() {
     }
   }, [searchParams, navigate]);
 
-  const handleTopUp = async () => {
-    if (!user) return;
-    const amount = parseInt(topUpAmount);
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("لطفاً یک مبلغ معتبر وارد کنید");
-      return;
-    }
-
-    setBusy(true);
-    try {
-      // Create topup record
-      const { data: topupData, error: topupError } = await supabase
-        .from("wallet_topups")
-        .insert({
-          user_id: user.id,
-          amount: amount,
-          status: "pending_payment"
-        })
-        .select()
-        .single();
-
-      if (topupError) throw topupError;
-
-      // Init payment gateway
-      const { data: sessionData } = await supabase.auth.getSession();
-      const response = await fetch("/api/bitpay/wallet-init", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionData.session?.access_token}`
-        },
-        body: JSON.stringify({ topupId: topupData.id })
-      });
-      const bitpayData = await response.json();
-      const bitpayError = !response.ok ? new Error(bitpayData.error || 'Fetch error') : null;
-
-      if (bitpayError || bitpayData?.error || !bitpayData?.redirectUrl) {
-        const errMsg = bitpayData?.error || bitpayError?.message || "مشکلی در اتصال به درگاه پرداخت رخ داد.";
-        toast.error(errMsg);
-        setBusy(false);
-        return;
-      }
-
-      // Redirect to gateway
-      window.location.href = bitpayData.redirectUrl;
-
-    } catch (err) {
-      console.error("Top up error", err);
-      toast.error("شروع فرآیند شارژ کیف پول با شکست مواجه شد");
-      setBusy(false);
-    }
-  };
-
   return (
     <AccountLayout
       title="کیف پول"
-      description="اعتبار فروشگاه، استردادها و موجودی هدیه — به‌طور خودکار در تسویه حساب استفاده می‌شود."
+      description="موجودی و فعالیت کیف پول شما"
     >
       <div className="bg-primary text-primary-foreground p-8 md:p-10 rounded-2xl">
           <p className="text-[11px] text-primary-foreground/60">
@@ -97,26 +40,10 @@ export default function Wallet() {
             {formatAmount(wallet?.balance ?? 0)}
           </p>
           <p className="mt-4 text-sm text-primary-foreground/70 max-w-md">
-            موجودی به‌طور خودکار به سفارش بعدی شما اعمال می‌شود.
+            پرداخت و شارژ کیف پول موقتاً در دسترس نیست. موجودی شما در این صفحه قابل مشاهده است.
           </p>
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-4 max-w-md">
-            <input
-              type="number"
-              placeholder="مبلغ شارژ (ریال)"
-              value={topUpAmount}
-              onChange={(e) => setTopUpAmount(e.target.value)}
-              disabled={busy}
-              className="h-12 px-4 bg-primary-foreground/10 border border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:border-primary-foreground/50 transition-colors flex-1 rounded-xl"
-            />
-            <button
-              onClick={handleTopUp}
-              disabled={busy || !topUpAmount}
-              className="h-12 px-8 bg-accent text-accent-foreground text-xs disabled:opacity-60 hover:opacity-90 transition-opacity whitespace-nowrap flex items-center justify-center min-w-[140px] rounded-full"
-            >
-              {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : "شارژ کیف پول"}
-            </button>
-          </div>
+          <p role="status" className="mt-8 text-sm">شارژ جدید کیف پول موقتاً غیرفعال است.</p>
         </div>
 
         <div className="mt-10">

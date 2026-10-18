@@ -3,6 +3,8 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 
 export default defineConfig({
+  // Unit tests use synthetic clients and must not load root production .env files.
+  envDir: path.resolve(__dirname, "src/test"),
   plugins: [react()],
   test: {
     environment: "jsdom",

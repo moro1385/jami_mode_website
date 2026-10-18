@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useAuthStore } from "@/stores/authStore";
-import { useCartStore, CartItem } from "@/stores/cartStore";
+import { useCartStore } from "@/stores/cartStore";
 import { supabase } from "@/integrations/supabase/client";
-import { flushCartToServer } from "@/lib/cartSync";
+import { flushCartToServer, parseCartItems } from "@/lib/cartSync";
 
 export default function CartSync() {
   const user = useAuthStore((s) => s.user);
@@ -39,8 +39,7 @@ export default function CartSync() {
             return;
           }
 
-          const localItems = useCartStore.getState().items;
-          const serverItems: CartItem[] = data?.items ? (data.items as unknown as CartItem[]) : [];
+          const serverItems = parseCartItems(data?.items);
 
           if (serverItems.length > 0) {
             // REPLACE WITH SERVER ITEMS

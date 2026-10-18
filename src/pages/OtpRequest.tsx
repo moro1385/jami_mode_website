@@ -1,5 +1,6 @@
+import { authPath, authReturn } from "@/lib/authReturn";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2, Smartphone } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
 import FormField from "@/components/auth/FormField";
@@ -17,6 +18,8 @@ const sanitizePhoneInput = (val: string) => {
 
 export default function OtpRequest() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const destination = authReturn(location.search);
   const requestOtp = useAuthStore((s) => s.requestOtp);
   const [phone, setPhone] = useState("");
   const [error, setError] = useState("");
@@ -36,7 +39,7 @@ export default function OtpRequest() {
       setOtpSentAt(normalized);
       if (result.devCode) toast.info(`کد آزمایشی: ${result.devCode}`, { duration: 15000 });
       else toast.success("کد تایید ارسال شد");
-      navigate("/signin/otp/verify", { state: { phone: normalized } });
+      navigate(authPath("/signin/otp/verify", destination), { state: { phone: normalized } });
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "کد ارسال نشد. لطفاً دوباره تلاش کنید.");
     } finally {
@@ -51,7 +54,7 @@ export default function OtpRequest() {
       subtitle="شماره موبایل خود را وارد کنید تا یک کد تایید ۶ رقمی برای شما پیامک شود."
       footer={
         <Link
-          to="/signin"
+          to={authPath("/signin", destination)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

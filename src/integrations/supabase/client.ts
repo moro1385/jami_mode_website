@@ -2,13 +2,18 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = 'https://klfmscuogsocfjxqkuib.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_12kBSeTHqLjZS56Y-hE_og_cutIUoSN';
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+import { publicSupabaseConfig } from '../../../config/supabase-public.js';
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
+// Pass individual public fields: never bundle the entire Vite environment.
+const config = publicSupabaseConfig({
+  MODE: import.meta.env.MODE,
+  VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL,
+  VITE_SUPABASE_PUBLISHABLE_KEY: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+});
+
+export const supabase = createClient<Database>(config.url, config.key, {
   auth: {
+    ...(config.localTest ? { storageKey: 'jami-local-test-auth' } : {}),
     storage: typeof window !== 'undefined' ? localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
