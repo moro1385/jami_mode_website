@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { normalizePhone } from "@/lib/phone";
 import { completePendingSignup, saveProfileEdits } from "@/lib/profileWrites";
 import { useCartStore } from "./cartStore";
+import { useCheckoutStore } from "./checkoutStore";
 import { flushCartToServer } from "@/lib/cartSync";
 import type { Address, Session, User } from "@/types/auth";
 import type { Session as SupabaseSession } from "@supabase/supabase-js";
@@ -40,6 +41,7 @@ export const useAuthStore = create<AuthStore>()(
     (set, get) => {
       let authEventVersion = 0;
       let signedOutVersion = 0;
+      let passwordSignInVersion = 0;
       const refreshAuthenticatedUser = async (currentSession: SupabaseSession | null, eventVersion: number) => {
         const session = mapSupabaseSession(currentSession);
         if (!session) return;
@@ -78,7 +80,7 @@ export const useAuthStore = create<AuthStore>()(
             isDefault: dbA.is_default || false,
           }));
 
-          const currentUser = get().user;
+          const currentUser = get().user?.id === currentSession.user.id ? get().user : null;
           const user: User = {
             id: currentSession.user.id,
             phone: currentSession.user.phone || profile?.phone || "",
@@ -99,6 +101,11 @@ export const useAuthStore = create<AuthStore>()(
       // callback can deadlock its session lock. Ignore stale completed hydration.
       supabase.auth.onAuthStateChange((event, currentSession) => {
         const eventVersion = ++authEventVersion;
+        if (event === 'SIGNED_OUT' || (currentSession?.user && get().user && currentSession.user.id !== get().user?.id)) {
+          useCartStore.getState().clearCart();
+          useCheckoutStore.getState().clearCheckout();
+          set({ session: null, user: null });
+        }
         if (event === 'SIGNED_OUT') {
           signedOutVersion++;
           set({ session: null, user: null });
@@ -163,7 +170,7 @@ export const useAuthStore = create<AuthStore>()(
             }));
 
             if (eventVersion !== authEventVersion) return;
-            const currentUser = get().user;
+            const currentUser = get().user?.id === currentSession.user.id ? get().user : null;
             set({
               session: mapSupabaseSession(currentSession),
               user: {
@@ -186,6 +193,7 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         signInWithPassword: async (phone, password) => {
+          const loginVersion = ++passwordSignInVersion;
           const signOutVersion = signedOutVersion;
           const normalized = normalizePhone(phone);
           const { data, error } = await supabase.auth.signInWithPassword({ phone: normalized, password });
@@ -216,8 +224,8 @@ export const useAuthStore = create<AuthStore>()(
               isDefault: dbA.is_default || false,
             }));
 
-            if (signOutVersion !== signedOutVersion) return;
-            const currentUser = get().user;
+            if (signOutVersion !== signedOutVersion || loginVersion !== passwordSignInVersion) return;
+            const currentUser = get().user?.id === data.user.id ? get().user : null;
             set({
               session: mapSupabaseSession(data.session),
               user: {
@@ -366,7 +374,7 @@ export const useAuthStore = create<AuthStore>()(
               await supabase.from("addresses").update({ is_default: true }).eq("id", id);
           }
 
-          set({ user: { ...user, addresses } });
+          if (get().user?.id === user.id) set({ user: { ...get().user!, addresses } });
         },
 
         deleteAddress: async (id) => {
@@ -382,7 +390,7 @@ export const useAuthStore = create<AuthStore>()(
                await supabase.from("addresses").update({ is_default: true }).eq("id", addresses[0].id);
             }
           }
-          set({ user: { ...user, addresses } });
+          if (get().user?.id === user.id) set({ user: { ...get().user!, addresses } });
         },
 
         setDefaultAddress: async (id) => {
@@ -393,7 +401,7 @@ export const useAuthStore = create<AuthStore>()(
           await supabase.from("addresses").update({ is_default: true }).eq("id", id);
 
           const addresses = user.addresses.map((a) => ({ ...a, isDefault: a.id === id }));
-          set({ user: { ...user, addresses } });
+          if (get().user?.id === user.id) set({ user: { ...get().user!, addresses } });
         },
       };
     },

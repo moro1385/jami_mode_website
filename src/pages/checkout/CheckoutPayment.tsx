@@ -62,13 +62,25 @@ export default function CheckoutPayment() {
           ...(confirmedQuote ? { quote: confirmedQuote.quote } : {}) }),
       });
       const result = await checkoutResponse.json();
-      if (!checkoutResponse.ok) { setQuote(null); throw new Error(result.error || 'Checkout rejected'); }
+      if (!checkoutResponse.ok) {
+        setQuote(null);
+        if (result.code === 'CHECKOUT_EXPIRED') {
+          requestRef.current = null; sessionStorage.removeItem(storageKey);
+          toast.info('مهلت سفارش قبلی تمام شده است. مبلغ و موجودی را دوباره بررسی کنید.'); return;
+        }
+        if (result.code === 'PENDING_ORDER_LIMIT') {
+          toast.error('چند سفارش پرداخت‌نشده دارید. ابتدا وضعیت سفارش‌های قبلی را پیگیری کنید.',
+            { action: { label: 'سفارش‌های من', onClick: () => navigate('/account/orders') } }); return;
+        }
+        throw new Error(result.error || 'Checkout rejected');
+      }
       if (!confirmedQuote) {
         if (typeof result.quote !== 'string' || !Number.isSafeInteger(result.total) || !Number.isSafeInteger(result.shipping)) throw new Error('Invalid quote');
         setQuote({ quote: result.quote, total: result.total, shipping: result.shipping, selection: serialized });
         return;
       }
       if (typeof result.orderId !== 'string') throw new Error('Missing trusted order');
+      sessionStorage.setItem(storageKey, JSON.stringify({ ...requestRef.current, orderId: result.orderId }));
       const response = await fetch("/api/bitpay/init", {
         method: "POST",
         headers: {
@@ -79,9 +91,12 @@ export default function CheckoutPayment() {
       });
       const bitpayData = await response.json();
       if (response.ok && bitpayData.success === true) {
-        sessionStorage.removeItem(storageKey);
         navigate(`/checkout/success?order=${encodeURIComponent(result.orderId)}`);
         return;
+      }
+      if (bitpayData.code === 'PAYMENT_AMBIGUOUS') {
+        toast.error('وضعیت پرداخت هنوز مشخص نیست. اگر وجه کسر شده، پیش از پرداخت دوباره سفارش را پیگیری کنید.',
+          { action: { label: 'پیگیری سفارش', onClick: () => navigate('/account/orders') } }); return;
       }
       const bitpayError = !response.ok ? new Error(bitpayData.error || 'Fetch error') : null;
 

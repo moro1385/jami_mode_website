@@ -4,13 +4,13 @@ import { createPaymentRouter } from '../bitpay-routes.js';
 import { testBackendConfig, guardedTestFetch } from './config.js';
 import { createFakeProvider, blockedLegacyProvider } from './fake-provider.js';
 
-export function createHarness({ env, transport = globalThis.fetch, clients } = {}) {
+export function createHarness({ env, transport = globalThis.fetch, clients, provider: injectedProvider } = {}) {
   const config = testBackendConfig(env);
   const safeFetch = guardedTestFetch(transport);
   const options = { auth: { persistSession: false, autoRefreshToken: false }, global: { fetch: safeFetch } };
   const admin = clients?.admin ?? createClient(config.url, config.secret, options);
   const authClient = clients?.auth ?? createClient(config.url, config.publishable, options);
-  const provider = createFakeProvider(config);
+  const provider = injectedProvider ?? createFakeProvider(config);
   const app = express();
   app.disable('x-powered-by');
   app.use((req, res, next) => {
@@ -32,7 +32,7 @@ export function createHarness({ env, transport = globalThis.fetch, clients } = {
     return error ? null : data.user;
   };
   app.use('/api/bitpay', createPaymentRouter({ admin: () => admin, auth: authenticate,
-    provider, legacy: blockedLegacyProvider, merchant: () => config.merchant }));
+    provider, legacy: blockedLegacyProvider, merchant: () => config.merchant, recoveryEnabled: true }));
   app.get('/fake-payments/:reference', (req, res) => {
     const ref = req.params.reference;
     if (!/^[1-9][0-9]*$/.test(ref) || !provider.session(ref)) return res.sendStatus(404);

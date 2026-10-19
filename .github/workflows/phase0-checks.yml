@@ -1,0 +1,39 @@
+name: Phase 0 checks
+on:
+  pull_request:
+  push:
+    branches: [main, security/first-containment]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: phase0-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  local-security-checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, verified against official API
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5, verified against official API
+        with:
+          node-version: 24
+          cache: npm
+      - name: Frozen dependency installation without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run lint
+      - name: Build without live sitemap/catalog access
+        run: node node_modules/vite/bin/vite.js build
+      - name: Install PostgreSQL tools for disposable local clusters
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql postgresql-client libpq-dev
+          pg_bin="$(pg_config --bindir)"
+          test -x "$pg_bin/initdb"
+          echo "JAMI_TEST_PG_BIN=$pg_bin" >> "$GITHUB_ENV"
+      - run: npm run test:phase0:db
+      - run: npm run test:bootstrap:db

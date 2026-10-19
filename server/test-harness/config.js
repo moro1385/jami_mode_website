@@ -15,12 +15,15 @@ export function testBackendConfig(env) {
     frontendOrigin: 'http://127.0.0.1:8080', backendOrigin: 'http://127.0.0.1:3001' });
 }
 export const RPC_NAMES = ['trusted_checkout', 'trusted_payment_claim', 'trusted_payment_attach',
-  'trusted_payment_lookup', 'trusted_payment_settle'];
+  'trusted_payment_lookup', 'trusted_payment_settle', 'trusted_verification_claim',
+  'trusted_verification_record', 'trusted_reconcile_verified'];
 export function guardedTestFetch(transport = globalThis.fetch, seed = false) {
   return async (input, init = {}) => {
     const raw = typeof input === 'string' || input instanceof URL ? String(input) : input.url;
     const url = new URL(raw);
-    const allowed = url.pathname === '/auth/v1/user'
+    const method = (init.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET')).toUpperCase();
+    const allowed = (url.pathname === '/rest/v1/orders' && method === 'GET')
+      || url.pathname === '/auth/v1/user'
       || RPC_NAMES.some(name => url.pathname === `/rest/v1/rpc/${name}`)
       || (seed && (url.pathname === '/auth/v1/admin/users'
         || /^\/rest\/v1\/(profiles|user_roles|addresses|categories|products|product_variants)$/.test(url.pathname)));

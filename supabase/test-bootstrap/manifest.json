@@ -1,145 +1,145 @@
 {
   "projectRef": "cifhcrlmjnsxpkhyloen",
-  "formatVersion": 1,
+  "formatVersion": 2,
   "migrations": [
     {
       "order": 1,
       "filename": "20260817121647_cb255752-e179-4ab4-8fd9-fa53002fe795.sql",
-      "sourceSha256": "92e02582fa6bbbed1049ddecde67383a0903f800a237f69c8cb69ddd59dc5701",
-      "bootstrapSha256": "92e02582fa6bbbed1049ddecde67383a0903f800a237f69c8cb69ddd59dc5701",
+      "sourceSha256": "eb3a4b8bd6a383d13ffb6e0b57ec20cb19e09ffaeb772838bad86729976d7a80",
+      "bootstrapSha256": "eb3a4b8bd6a383d13ffb6e0b57ec20cb19e09ffaeb772838bad86729976d7a80",
       "correction": null
     },
     {
       "order": 2,
       "filename": "20240101000000_add_product_flags_and_images.sql",
-      "sourceSha256": "1a906f7eb1634b46d917ca20ee46206c8de780727449e9a76c7682005a6b8cae",
-      "bootstrapSha256": "1a906f7eb1634b46d917ca20ee46206c8de780727449e9a76c7682005a6b8cae",
+      "sourceSha256": "b3535afde3363f34f6389c12790d29583edd9fd7fa68409e1c36bf3e4d923263",
+      "bootstrapSha256": "b3535afde3363f34f6389c12790d29583edd9fd7fa68409e1c36bf3e4d923263",
       "correction": null
     },
     {
       "order": 3,
       "filename": "20240101000001_fix_profiles_rls.sql",
-      "sourceSha256": "64261b97292c32471843bd62de99b0e2d26690bd5bbddd5e0a307caff1a586eb",
-      "bootstrapSha256": "3cac6a21438eb1e5df780aae4d3d7a386094df74e8d65d26cda5b3f8634ca9da",
+      "sourceSha256": "c522da2a481792629688a7ac8ce5b4923cc64cc3e8c07f65d205b9042348f6f3",
+      "bootstrapSha256": "9ad33ba2b26fdb4f21d5522e75c34a94262a87b9e9ef9d0f3d87d62aa3294399",
       "correction": "Correct has_role(uuid, app_role) argument order; original preserved."
     },
     {
       "order": 4,
       "filename": "20260817121702_1fe1a749-b749-4285-a54f-8c8a6d547e42.sql",
-      "sourceSha256": "ddf22df1669e0e3d42c58a60dc37b2c869156f5738c5a65b542b8c4a06593c2c",
-      "bootstrapSha256": "ddf22df1669e0e3d42c58a60dc37b2c869156f5738c5a65b542b8c4a06593c2c",
+      "sourceSha256": "91d1171bd197f433a120b4433001767b220838d97f066dec94f2c9fa55111e50",
+      "bootstrapSha256": "91d1171bd197f433a120b4433001767b220838d97f066dec94f2c9fa55111e50",
       "correction": null
     },
     {
       "order": 5,
       "filename": "20260817121723_ea2e2174-8295-43d6-bdb8-1b04e1a89bc0.sql",
-      "sourceSha256": "438cca4068adc8219df125a2d8954f86078a90f920933a7373387355d442a4ac",
-      "bootstrapSha256": "438cca4068adc8219df125a2d8954f86078a90f920933a7373387355d442a4ac",
+      "sourceSha256": "ccda7255134fd5c8842e47e99d935acd2656e562820a83272cd2951488c5f4b3",
+      "bootstrapSha256": "ccda7255134fd5c8842e47e99d935acd2656e562820a83272cd2951488c5f4b3",
       "correction": null
     },
     {
       "order": 6,
       "filename": "20260817121800_add_shopify_variant_id.sql",
-      "sourceSha256": "0d32d78ad27e35b3f60d667766c8de6d43badc34707e7dbf375240baadad75c9",
-      "bootstrapSha256": "0d32d78ad27e35b3f60d667766c8de6d43badc34707e7dbf375240baadad75c9",
+      "sourceSha256": "d2f8c33195bef94890517930c0b5d9f4d6f63d9e7b6edef72f1f517383500d7c",
+      "bootstrapSha256": "d2f8c33195bef94890517930c0b5d9f4d6f63d9e7b6edef72f1f517383500d7c",
       "correction": null
     },
     {
       "order": 7,
       "filename": "20260817122000_add_tags_to_products.sql",
-      "sourceSha256": "e396aec99ae91e565c122603436db6a0876b52cac9185e69ee87c7ed62bee0f3",
-      "bootstrapSha256": "e396aec99ae91e565c122603436db6a0876b52cac9185e69ee87c7ed62bee0f3",
+      "sourceSha256": "8e148dfb64e4b839c3c4a7a44b5f92a00da5fc2629bb341aae99b466901cb05c",
+      "bootstrapSha256": "8e148dfb64e4b839c3c4a7a44b5f92a00da5fc2629bb341aae99b466901cb05c",
       "correction": null
     },
     {
       "order": 8,
       "filename": "20260817122100_add_product_details.sql",
-      "sourceSha256": "6418c9f3a7951bca2f104dd373b54415c9af72ebfd050ace08c1fa19ca22f8a3",
-      "bootstrapSha256": "6418c9f3a7951bca2f104dd373b54415c9af72ebfd050ace08c1fa19ca22f8a3",
+      "sourceSha256": "506c1c61e4b9f0fd8f849bddf4bc1fbf4f4c61c63d9e033bfd1b015716430b42",
+      "bootstrapSha256": "506c1c61e4b9f0fd8f849bddf4bc1fbf4f4c61c63d9e033bfd1b015716430b42",
       "correction": null
     },
     {
       "order": 9,
       "filename": "20260817122200_add_product_colors.sql",
-      "sourceSha256": "42c368fe224fbfaad7ff7789355fdff86ac56abd875fdc7bf3e1893125ed1520",
-      "bootstrapSha256": "42c368fe224fbfaad7ff7789355fdff86ac56abd875fdc7bf3e1893125ed1520",
+      "sourceSha256": "3e98067b694067422628d4e14fb974fa78ac37fe5964c860f18a825591464b3e",
+      "bootstrapSha256": "3e98067b694067422628d4e14fb974fa78ac37fe5964c860f18a825591464b3e",
       "correction": null
     },
     {
       "order": 10,
       "filename": "20260901000000_checkout_schema.sql",
-      "sourceSha256": "5486d339b1acb44d792a55e88b0999c0fac826d62bc1806d8483aa76e609dcf8",
-      "bootstrapSha256": "5486d339b1acb44d792a55e88b0999c0fac826d62bc1806d8483aa76e609dcf8",
+      "sourceSha256": "86f2f741934038fa8500e3ebfda53dfa40c46f180e1b3ddf08459fb9887754d5",
+      "bootstrapSha256": "86f2f741934038fa8500e3ebfda53dfa40c46f180e1b3ddf08459fb9887754d5",
       "correction": null
     },
     {
       "order": 11,
       "filename": "20260901000001_checkout_schema_fix.sql",
-      "sourceSha256": "765d7dbd62276ef8f3f9b82dfcacd715723af886d827d8a7a10ee043d0b7e46f",
-      "bootstrapSha256": "765d7dbd62276ef8f3f9b82dfcacd715723af886d827d8a7a10ee043d0b7e46f",
+      "sourceSha256": "c0143dafd8f1600b34229f4c767ef4fb57df6ea592d9f3d73c78bc42975368e8",
+      "bootstrapSha256": "c0143dafd8f1600b34229f4c767ef4fb57df6ea592d9f3d73c78bc42975368e8",
       "correction": null
     },
     {
       "order": 12,
       "filename": "20260902000000_fix_orders_rls_and_address.sql",
-      "sourceSha256": "85c817ada89848d9d655f2a08c5dd8f15593fa54a13c48742fb462ee409eabce",
-      "bootstrapSha256": "85c817ada89848d9d655f2a08c5dd8f15593fa54a13c48742fb462ee409eabce",
+      "sourceSha256": "26eae80ac2057fd88560843a9e557e29dc6beb6c987ec4e9bbdcdab4c75094ea",
+      "bootstrapSha256": "26eae80ac2057fd88560843a9e557e29dc6beb6c987ec4e9bbdcdab4c75094ea",
       "correction": null
     },
     {
       "order": 13,
       "filename": "20260903000000_create_tickets_table.sql",
-      "sourceSha256": "81391e9e3efca84bc3c718cdc6eb1f81c7b405652a945f9e00c6858e66b4102f",
-      "bootstrapSha256": "81391e9e3efca84bc3c718cdc6eb1f81c7b405652a945f9e00c6858e66b4102f",
+      "sourceSha256": "19289cb8aced00689c5b298fba443126307e5077956f230b0ed91d4cd6d1070b",
+      "bootstrapSha256": "19289cb8aced00689c5b298fba443126307e5077956f230b0ed91d4cd6d1070b",
       "correction": null
     },
     {
       "order": 14,
       "filename": "20260904000000_change_brand_to_array.sql",
-      "sourceSha256": "8cea009377f5340c481ac40eabaf1dd559cf5ecc5eda47b680829f38e4e2ec8e",
-      "bootstrapSha256": "8cea009377f5340c481ac40eabaf1dd559cf5ecc5eda47b680829f38e4e2ec8e",
+      "sourceSha256": "f77f2a384a6289186645a98e4539356d53089c8d7d206a02a98b909aa4d523d7",
+      "bootstrapSha256": "f77f2a384a6289186645a98e4539356d53089c8d7d206a02a98b909aa4d523d7",
       "correction": null
     },
     {
       "order": 15,
       "filename": "20260911000000_create_return_requests.sql",
-      "sourceSha256": "06a472e4ea6671997b54be8ad48c7026adeff30ad816c33769ae4974d224f50a",
-      "bootstrapSha256": "06a472e4ea6671997b54be8ad48c7026adeff30ad816c33769ae4974d224f50a",
+      "sourceSha256": "cc50dec22a28595819317acd933e1a3456417e87c7299e38f28154d21c83d0b8",
+      "bootstrapSha256": "cc50dec22a28595819317acd933e1a3456417e87c7299e38f28154d21c83d0b8",
       "correction": null
     },
     {
       "order": 16,
       "filename": "20260912000000_create_user_messages_table.sql",
-      "sourceSha256": "f9bcf6862c7ee0424861598537f30559035a7473ec25cb2a4fd0ae5e8e8e5596",
-      "bootstrapSha256": "f9bcf6862c7ee0424861598537f30559035a7473ec25cb2a4fd0ae5e8e8e5596",
+      "sourceSha256": "724c0b792f1fb1e25d7aabb89686118cb465d8b080e8016f1887c1e490fb699d",
+      "bootstrapSha256": "724c0b792f1fb1e25d7aabb89686118cb465d8b080e8016f1887c1e490fb699d",
       "correction": null
     },
     {
       "order": 17,
       "filename": "20260920154818_replace_carts_schema.sql",
-      "sourceSha256": "493ebca04b0bccd3ea7ad7c29f67442de55440196a45669a9bc122488fa033d8",
-      "bootstrapSha256": "493ebca04b0bccd3ea7ad7c29f67442de55440196a45669a9bc122488fa033d8",
+      "sourceSha256": "d3fb4b80d2c08518eb4108fa4396dc8b8be2ab6e66065d06e9d9322298e3f3ea",
+      "bootstrapSha256": "d3fb4b80d2c08518eb4108fa4396dc8b8be2ab6e66065d06e9d9322298e3f3ea",
       "correction": null
     },
     {
       "order": 18,
       "filename": "20260921000000_add_out_of_stock.sql",
-      "sourceSha256": "5b9dfaba79f88b462a8ce41e6cf5cf6d84b17e6eb54d60ad79f942f54e83d0bc",
-      "bootstrapSha256": "5b9dfaba79f88b462a8ce41e6cf5cf6d84b17e6eb54d60ad79f942f54e83d0bc",
+      "sourceSha256": "27d85550f33a600203656620c041d59e981c4c1cd037dcab434ddcf71098378a",
+      "bootstrapSha256": "27d85550f33a600203656620c041d59e981c4c1cd037dcab434ddcf71098378a",
       "correction": null
     },
     {
       "order": 19,
       "filename": "20260921122000_add_bitpay_columns.sql",
-      "sourceSha256": "44657628b6226fd688a1c0f513f596e712cd53844d2c763d2f17762fab05abc1",
-      "bootstrapSha256": "44657628b6226fd688a1c0f513f596e712cd53844d2c763d2f17762fab05abc1",
+      "sourceSha256": "f1e7037dddc87d76da4f698e81261b994fbb7549312dff9276d375cdf4e4b635",
+      "bootstrapSha256": "f1e7037dddc87d76da4f698e81261b994fbb7549312dff9276d375cdf4e4b635",
       "correction": null
     },
     {
       "order": 20,
       "filename": "20260922000000_create_wallet_topups.sql",
-      "sourceSha256": "10ca8db064f17d4f4c78a70cc4c87e4fcc456f68e5bca82cf994d2b3232f46ff",
-      "bootstrapSha256": "10ca8db064f17d4f4c78a70cc4c87e4fcc456f68e5bca82cf994d2b3232f46ff",
+      "sourceSha256": "fb2b8801f09dbf890141fada95a4e214a73a10ae173f1f84f3608c91b4d0859b",
+      "bootstrapSha256": "fb2b8801f09dbf890141fada95a4e214a73a10ae173f1f84f3608c91b4d0859b",
       "correction": null
     },
     {
@@ -155,14 +155,36 @@
       "sourceSha256": "d48d9775ebb407d7f8c50ea4839d3f47e8c63bd0c622f83ffd991fe7d1680d7f",
       "bootstrapSha256": "d48d9775ebb407d7f8c50ea4839d3f47e8c63bd0c622f83ffd991fe7d1680d7f",
       "correction": null
+    },
+    {
+      "order": 23,
+      "filename": "20261019075415_phase0_payment_recovery.sql",
+      "correction": null,
+      "sourceSha256": "321ef8d53df168181d8360cb5eb232a8227c7fde707324f139f7fb952c0d7bed",
+      "bootstrapSha256": "321ef8d53df168181d8360cb5eb232a8227c7fde707324f139f7fb952c0d7bed"
+    },
+    {
+      "order": 24,
+      "filename": "20261019075416_phase0_private_return_images.sql",
+      "correction": null,
+      "sourceSha256": "6473dcd723debb28c535ccacc6e8c871db7b655f18cacc17fc1374a565e2537a",
+      "bootstrapSha256": "6473dcd723debb28c535ccacc6e8c871db7b655f18cacc17fc1374a565e2537a"
+    },
+    {
+      "order": 25,
+      "filename": "20261019075417_phase0_reservation_expiry.sql",
+      "correction": null,
+      "sourceSha256": "9eb00a2c46e973c9b62d2df3fac5e67006c72b4989a0c6482ee010fdcf799b76",
+      "bootstrapSha256": "9eb00a2c46e973c9b62d2df3fac5e67006c72b4989a0c6482ee010fdcf799b76"
     }
   ],
   "preflight": {
     "filename": "preflight.sql",
-    "sha256": "47d4d96bc2cd5fd09fe52cba77a8cd770bf4a85d5c05088a9ec5524b3285ae95"
+    "sha256": "8dab1127f369c8b4fcbf8ad8a539e803d85daa8a511f9c569cfda7c2c363912f"
   },
   "postMigrationFixes": {
     "filename": "fixes.sql",
-    "sha256": "14dc1544bb230fc8365114dbfafbb4b2e1bc28c738f08a7a65956b34337aea3c"
-  }
+    "sha256": "1dacf1a747a6b0f91b6dbf13ca832bc1a8a60fb3118e3d94bf03dc5b16719716"
+  },
+  "hashEncoding": "utf8-lf"
 }

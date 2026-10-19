@@ -28,5 +28,8 @@ COMMIT;
 -- The two security files and fixes.sql each own their transaction.
 \ir migrations/20261017143036_first_security_containment.sql
 \ir migrations/20261017180000_trusted_checkout.sql
+\ir migrations/20261019075415_phase0_payment_recovery.sql
+\ir migrations/20261019075416_phase0_private_return_images.sql
+\ir migrations/20261019075417_phase0_reservation_expiry.sql
 \ir fixes.sql
 NOTIFY pgrst, 'reload schema';

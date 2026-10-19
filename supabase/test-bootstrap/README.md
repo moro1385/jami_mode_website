@@ -1,3 +1,6 @@
+## Follow-up preparation — 2026-10-19
+The manifest now contains 25 files, including three locally prepared Phase 0 follow-ups. Hash format v2 normalizes UTF-8 CRLF to LF in SQL text before hashing; other content changes still fail. The original 22 migration files are unchanged. Do not apply the hosted test bootstrap or these new migrations without separate approval. Private return images require a coordinated frontend/database release; payment recovery stays off until its migration and legacy callback compatibility are reviewed. The historical baseline description below refers to the original 22 files.
+
 # Fresh jamimode-test bootstrap ? prepared, not remotely executed
 
 Only target: `cifhcrlmjnsxpkhyloen` (`jamimode-test`). Production `klfmscuogsocfjxqkuib` is off-limits.

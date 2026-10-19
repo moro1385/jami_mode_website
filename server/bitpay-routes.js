@@ -16,9 +16,25 @@ const authenticate = async header => {
 };
 
 export function createPaymentRouter({ admin = adminClient, auth = authenticate, legacy = legacyBitpayProvider, provider = bitpayProvider,
-  merchant = () => process.env.BITPAY_MERCHANT_ACCOUNT } = {}) {
+  merchant = () => process.env.BITPAY_MERCHANT_ACCOUNT,
+  recoveryEnabled = process.env.PAYMENT_RECOVERY_ENABLED === 'true' } = {}) {
   const router = Router();
   const enabled = provider?.newPaymentsEnabled === true;
+  router.get('/orders/:id/status', async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    try {
+      const user = await auth(req.headers.authorization);
+      if (!user) return res.status(401).json({ error: 'Unauthorized' });
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(req.params.id)) return res.status(404).json({ error: 'Order not found' });
+      const { data: order, error } = await admin().from('orders')
+        .select('id,user_id,payment_state,payment_method,payment_trans_id')
+        .eq('id', req.params.id).eq('user_id', user.id).maybeSingle();
+      if (error) throw new Error('Unavailable');
+      if (!order || order.user_id !== user.id) return res.status(404).json({ error: 'Order not found' });
+      const paid = order.payment_method === 'gateway' && order.payment_state === 'paid' && nonempty(order.payment_trans_id);
+      return res.status(200).json({ orderId: order.id, paid });
+    } catch { return res.status(503).json({ error: 'Order status unavailable' }); }
+  });
   const rpc = async (client, name, args) => {
     const { data, error } = await client.rpc(name, args);
     if (error) throw new Error(error.message || 'Database transaction failed');
@@ -38,9 +54,12 @@ export function createPaymentRouter({ admin = adminClient, auth = authenticate, 
         if (create && !enabled) return res.status(503).json({ error: 'Checkout creation is disabled', code: 'GATEWAY_DISABLED' });
         const result = await rpc(admin(), 'trusted_checkout', { p_user: user.id, p_key: idempotencyKey,
           p_request: selection, p_quote: create ? quote : null });
+        if (result.code === 'CHECKOUT_EXPIRED') return res.status(409).json({ code: 'CHECKOUT_EXPIRED', error: 'Checkout expired; review a new quote' });
+        if (result.code === 'PENDING_ORDER_LIMIT') return res.status(429).json({ code: 'PENDING_ORDER_LIMIT', error: 'Resolve pending orders before creating another' });
         return res.status(200).json(result);
-      } catch {
-        return res.status(409).json({ error: 'Checkout rejected. Refresh selections and review a new quote.' });
+      } catch (error) {
+        return res.status(409).json({ error: 'Checkout rejected. Refresh selections and review a new quote.',
+          ...(error.message === 'Checkout expired' ? { code: 'CHECKOUT_EXPIRED' } : {}) });
       }
     });
   }
@@ -69,7 +88,7 @@ export function createPaymentRouter({ admin = adminClient, auth = authenticate, 
       }
       return res.status(200).json({ redirectUrl: provider.redirect(ready.provider_ref) });
     } catch {
-      return res.status(409).json({ error: 'Payment initiation unresolved; retry status or contact support' });
+      return res.status(409).json({ error: 'Payment initiation unresolved; check order status or contact support', code: 'PAYMENT_AMBIGUOUS' });
     }
   });
   router.post('/wallet-init', (_req, res) => res.status(503).json({ error: 'Wallet top-ups are temporarily unavailable', code: 'WALLET_TOPUPS_DISABLED' }));
@@ -93,9 +112,22 @@ export function createPaymentRouter({ admin = adminClient, auth = authenticate, 
         if (!trans_id || trans_id === '0') return res.status(200).json({ success: false, reason: 'cancelled' });
         const adapter = attempt.version === 1 ? legacy : provider;
         if (!adapter || (attempt.version !== 1 && !enabled)) return res.status(503).json({ success: false, reason: 'provider_contract_required' });
-        const verified = await adapter.verify(attempt, trans_id);
+        // Preserve legacy callback transport; legacy recovery needs its own authenticated design.
+        const recover = recoveryEnabled && attempt.version === 2;
+        let verified;
+        if (recover) {
+          // A public callback must not poison the durable claim with a forged transaction.
+          const customer = await auth(req.headers?.authorization);
+          if (!customer) return res.status(401).json({ success: false, reason: 'verification_pending' });
+          const claim = await rpc(client, 'trusted_verification_claim', { p_attempt: attempt.id, p_transaction: trans_id, p_user: customer.id });
+          if (claim.state === 'verified') verified = claim.evidence;
+          else if (claim.claimed === true && claim.state === 'verifying') verified = await adapter.verify(attempt, trans_id);
+          else return res.status(200).json({ success: false, reason: 'verification_pending' });
+        } else verified = await adapter.verify(attempt, trans_id);
         if (attempt.currency !== 'IRR' || verified.currency !== attempt.currency || integerRial(verified.amount) !== integerRial(attempt.amount) || verified.merchant !== attempt.merchant
           || verified.reference !== attempt.provider_ref || verified.transaction !== trans_id) throw new Error('Verification binding mismatch');
+        if (recover) await rpc(client, 'trusted_verification_record', { p_attempt: attempt.id,
+          p_amount: integerRial(verified.amount), p_merchant: verified.merchant, p_ref: verified.reference, p_transaction: verified.transaction });
         const settled = await rpc(client, 'trusted_payment_settle', { p_attempt: attempt.id,
           p_amount: integerRial(verified.amount), p_merchant: verified.merchant, p_ref: verified.reference, p_transaction: verified.transaction });
         return res.status(200).json(settled);

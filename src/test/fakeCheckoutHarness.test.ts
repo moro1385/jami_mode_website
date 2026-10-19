@@ -12,6 +12,8 @@ let paid: boolean;
 let rpc;
 let auth;
 let transport;
+let journal;
+let fakeProvider;
 async function post(path: string, body: object, headers = {}) {
   // Native HTTP permits an explicit Host header while the listener uses an
   // ephemeral port. Browser fetch implementations may overwrite Host.
@@ -27,7 +29,7 @@ async function post(path: string, body: object, headers = {}) {
   });
 }
 beforeEach(async () => {
-  paid = false;
+  paid = false; journal = null;
   attempt = { id: '00000000-0000-0000-0000-000000000001', order_id: 'synthetic-order', amount: 2020000,
     currency: 'IRR', version: 2, provider: 'bitpay', merchant: 'test:localhost-fake', state: 'creating', claimed: true };
   rpc = vi.fn(async (name, args) => {
@@ -35,12 +37,23 @@ beforeEach(async () => {
     if (name === 'trusted_payment_claim') return { data: { ...attempt } };
     if (name === 'trusted_payment_attach') { attempt.provider_ref = args.p_ref; attempt.state = 'ready'; return { data: { ...attempt } }; }
     if (name === 'trusted_payment_lookup') return { data: { ...attempt } };
+    if (name === 'trusted_verification_claim') {
+      if (journal) return { data: { ...journal, claimed: false } };
+      journal = { state: 'verifying', claimed: true };
+      return { data: { ...journal } };
+    }
+    if (name === 'trusted_verification_record') {
+      journal = { state: 'verified', evidence: { amount: args.p_amount, currency: 'IRR', merchant: args.p_merchant, reference: args.p_ref, transaction: args.p_transaction } };
+      return { data: { recorded: true } };
+    }
     if (name === 'trusted_payment_settle') { paid = true; attempt.state = 'settled'; attempt.transaction_id = args.p_transaction; return { data: { success: true } }; }
     throw new Error('Unexpected RPC');
   });
   auth = vi.fn().mockResolvedValue({ data: { user: { id: 'test-buyer' } }, error: null });
   transport = vi.fn(() => { throw new Error('Unexpected outbound network'); });
-  const app = createHarness({ env, transport, clients: { admin: { rpc }, auth: { auth: { getUser: auth } } } });
+  fakeProvider = createFakeProvider({ merchant: 'test:localhost-fake', backendOrigin: 'http://127.0.0.1:3001', frontendOrigin: 'http://127.0.0.1:8080' });
+  vi.spyOn(fakeProvider, 'verify');
+  const app = createHarness({ env, transport, provider: fakeProvider, clients: { admin: { rpc }, auth: { auth: { getUser: auth } } } });
   server = await new Promise(resolve => { const listening = app.listen(0, '127.0.0.1', () => resolve(listening)); });
   origin = `http://127.0.0.1:${server.address().port}`;
 });
@@ -55,8 +68,6 @@ describe('localhost fake checkout with injected Auth and RPCs', () => {
     const init = await (await post('/api/bitpay/init', { orderId: 'synthetic-order' })).json();
     expect(init.redirectUrl).toMatch(/^http:\/\/127\.0\.0\.1:3001\/fake-payments\/[0-9]+$/);
     const path = new URL(init.redirectUrl).pathname;
-    const premature = await (await post('/api/bitpay/verify', { order_id: 'synthetic-order', id_get: attempt.provider_ref, trans_id: '9' + attempt.provider_ref })).json();
-    expect(premature.success).toBe(false); expect(paid).toBe(false);
     const completion = await post(path, { result: 'approve' });
     expect(completion.status).toBe(303);
     const callback = new URL(completion.headers.get('location')!);
@@ -65,6 +76,31 @@ describe('localhost fake checkout with injected Auth and RPCs', () => {
     expect(await (await post('/api/bitpay/verify', verify)).json()).toEqual({ success: true });
     expect(await (await post('/api/bitpay/verify', verify)).json()).toEqual({ success: true });
     expect(rpc.mock.calls.filter(([name]) => name === 'trusted_payment_settle')).toHaveLength(1);
+  });
+  it('recovers through real HTTP after a settlement error using saved evidence', async () => {
+    const init = await (await post('/api/bitpay/init', { orderId: 'synthetic-order' })).json();
+    const completion = await post(new URL(init.redirectUrl).pathname, { result: 'approve' });
+    const body = Object.fromEntries(new URL(completion.headers.get('location')!).searchParams);
+    const previous = rpc.getMockImplementation(); let fail = true;
+    rpc.mockImplementation(async (name, args) => {
+      if (name === 'trusted_payment_settle' && fail) { fail = false; return { error: { message: 'Injected failure' } }; }
+      return previous(name, args);
+    });
+    expect(await (await post('/api/bitpay/verify', body)).json()).toMatchObject({ success: false, reason: 'verification_pending' });
+    expect(journal.state).toBe('verified'); expect(paid).toBe(false);
+    expect(await (await post('/api/bitpay/verify', body)).json()).toEqual({ success: true });
+    expect(paid).toBe(true);
+    expect(fakeProvider.verify).toHaveBeenCalledTimes(1);
+    expect(rpc.mock.calls.filter(([name]) => name === 'trusted_payment_settle')).toHaveLength(2);
+  });
+  it('does not silently retry an ambiguous verification claim', async () => {
+    const init = await (await post('/api/bitpay/init', { orderId: 'synthetic-order' })).json();
+    const body = { order_id: 'synthetic-order', id_get: attempt.provider_ref, trans_id: '9' + attempt.provider_ref };
+    expect(await (await post('/api/bitpay/verify', body)).json()).toMatchObject({ success: false });
+    await post(new URL(init.redirectUrl).pathname, { result: 'approve' });
+    expect(await (await post('/api/bitpay/verify', body)).json()).toMatchObject({ success: false, reason: 'verification_pending' });
+    expect(paid).toBe(false);
+    expect(rpc.mock.calls.some(([name]) => name === 'trusted_verification_record')).toBe(false);
   });
   it('cancellation does not settle an order', async () => {
     const result = await (await post('/api/bitpay/init', { orderId: 'synthetic-order' })).json();

@@ -18,6 +18,8 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 
+import PrivateReturnImage from '@/components/returns/PrivateReturnImage';
+
 type ReturnRequest = {
   id: string;
   user_id: string;
@@ -113,12 +115,12 @@ export default function AdminReturnRequests() {
 
   const updateRequestStatus = async (id: string, newStatus: string) => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("return_requests")
         .update({ status: newStatus })
-        .eq("id", id);
+        .eq("id", id).select("id,status").maybeSingle();
 
-      if (error) throw error;
+      if (error || !data || data.status !== newStatus) throw new Error("Status was not saved");
 
       toast.success("وضعیت درخواست با موفقیت تغییر کرد");
       setRequests((prev) =>
@@ -218,15 +220,7 @@ export default function AdminReturnRequests() {
                             <DialogTrigger asChild>
                               <div className="flex -space-x-2 space-x-reverse cursor-pointer hover:opacity-80 transition-opacity">
                                 {req.image_urls.slice(0, 3).map((url, i) => (
-                                  <img
-                                    key={i}
-                                    src={url}
-                                    alt="Return Request"
-                                    className="w-8 h-8 rounded-md object-cover border-2 border-background"
-                                    loading="lazy"
-                                    width={32}
-                                    height={32}
-                                  />
+                                  <PrivateReturnImage key={i} reference={url} alt="تصویر مرجوعی" className="w-8 h-8 rounded-md object-cover border-2 border-background" />
                                 ))}
                                 {req.image_urls.length > 3 && (
                                   <div className="w-8 h-8 rounded-md bg-muted flex items-center justify-center text-xs font-medium border-2 border-background">
@@ -241,14 +235,7 @@ export default function AdminReturnRequests() {
                               </DialogHeader>
                               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                 {req.image_urls.map((url, i) => (
-                                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                                    <img
-                                      src={url}
-                                      alt={`Return Request ${i + 1}`}
-                                      className="w-full h-40 object-cover rounded-lg border border-border hover:opacity-90 transition-opacity"
-                                      loading="lazy"
-                                    />
-                                  </a>
+                                  <PrivateReturnImage key={i} reference={url} openable alt={`تصویر مرجوعی ${i + 1}`} className="w-full h-40 object-cover rounded-lg border border-border" />
                                 ))}
                               </div>
                             </DialogContent>

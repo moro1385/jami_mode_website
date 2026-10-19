@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
   // Test configuration comes only from the sanitized launcher process.
   ...(localTest ? { envDir: false } : {}),
   server: {
-    host: localTest ? "127.0.0.1" : "::",
+    host: "127.0.0.1",
     strictPort: localTest,
     ...(localTest ? { fs: { strict: true, deny: ["**/.env*", "**/*.env*", "**/*.local", "**/*.{crt,pem}"] } } : {}),
     port: 8080,

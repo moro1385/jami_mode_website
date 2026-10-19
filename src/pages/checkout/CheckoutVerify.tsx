@@ -43,8 +43,8 @@ export default function CheckoutVerify() {
         if (data?.success) {
           // A completed purchase may be followed by a new identical cart. Clear
           // only after server-confirmed settlement, never on the success URL.
-          const user = sessionData.session?.user;
-          if (user) sessionStorage.removeItem('trusted-checkout:' + user.id);
+          // The success page consumes this checkout snapshot only after it has
+          // independently read the owned order's paid status from the server.
           navigate(`/checkout/success?order=${order_id}`, { replace: true });
         } else {
           const reason = data?.reason || "error";

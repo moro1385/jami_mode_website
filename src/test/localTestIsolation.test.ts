@@ -9,7 +9,7 @@ const publicEnv = { MODE: 'local-test', VITE_SUPABASE_URL: TEST_ORIGIN, VITE_SUP
 const backendEnv = { JAMI_TEST_SUPABASE_URL: TEST_ORIGIN, JAMI_TEST_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic', JAMI_TEST_SUPABASE_SECRET_KEY: 'sb_secret_synthetic' };
 describe('isolated fresh test bootstrap', () => {
   it('covers all originals exactly once, checks hashes and dependency order', () => {
-    expect(validateBootstrap().migrations).toHaveLength(22);
+    expect(validateBootstrap().migrations).toHaveLength(25);
   });
   it('contains no synthetic Auth replacement or hostile fixture imports', () => {
     const script = readFileSync('supabase/test-bootstrap/bootstrap.psql', 'utf8');
@@ -56,6 +56,17 @@ describe('test configuration boundaries', () => {
     expect(() => testBackendConfig({ ...backendEnv, BITPAY_API_KEY: 'synthetic' })).toThrow();
     expect(() => testBackendConfig({ ...backendEnv, VITE_SUPABASE_SERVICE_ROLE_KEY: 'synthetic' })).toThrow();
     expect(() => testBackendConfig({ ...backendEnv, JAMI_TEST_SUPABASE_SECRET_KEY: 'eyJ.synthetic' })).toThrow();
+  });
+  it('permits recovery RPCs and read-only receipts only on the pinned test project', async () => {
+    const transport = vi.fn().mockResolvedValue(new Response('{}'));
+    const safe = guardedTestFetch(transport);
+    for (const name of ['trusted_verification_claim', 'trusted_verification_record', 'trusted_reconcile_verified']) {
+      await safe(TEST_ORIGIN + '/rest/v1/rpc/' + name, { method: 'POST' });
+    }
+    await safe(TEST_ORIGIN + '/rest/v1/orders?select=id', { method: 'GET' });
+    await expect(safe(TEST_ORIGIN + '/rest/v1/orders', { method: 'DELETE' })).rejects.toThrow('blocked');
+    await expect(safe(new Request(TEST_ORIGIN + '/rest/v1/orders', { method: 'PATCH' }))).rejects.toThrow('blocked');
+    expect(transport).toHaveBeenCalledTimes(4);
   });
   it('blocks provider URLs, production, arbitrary endpoints and redirect following before transport', async () => {
     const transport = vi.fn().mockResolvedValue(new Response('{}'));

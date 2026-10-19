@@ -114,3 +114,45 @@ describe("auth store compatibility", () => {
     expect(useAuthStore.getState().user).toBeNull();
   });
 });
+
+// Regression: switching between existing accounts must not carry cached orders.
+it('does not carry cached orders across a password login to another account', async () => {
+  useAuthStore.setState({ user: { ...customer, orders: [{ id: 'private-old-order' }] as User['orders'] } });
+  mocks.signInWithPassword.mockResolvedValue({ data: { user: { id: 'other', created_at: '2026-01-01' }, session: { access_token: 'synthetic', user: { id: 'other' } } }, error: null });
+  mocks.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => table === 'profiles' ? { single: async () => ({ data: {}, error: null }) } : Promise.resolve({ data: [], error: null }) }) }));
+  await useAuthStore.getState().signInWithPassword('09110000002', 'synthetic');
+  expect(useAuthStore.getState().user?.id).toBe('other'); expect(useAuthStore.getState().user?.orders).toEqual([]);
+});
+
+it('clears a previous account immediately when a different Auth identity arrives', async () => {
+  vi.useFakeTimers(); mocks.completePendingSignup.mockResolvedValue(null);
+  mocks.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => table === 'profiles' ? { single: async () => ({ data: {}, error: null }) } : Promise.resolve({ data: [], error: null }) }) }));
+  authListener('SIGNED_IN', { access_token: 'synthetic', user: { id: 'other', created_at: '2026-01-01' } });
+  expect(useAuthStore.getState().user).toBeNull();
+  await vi.runAllTimersAsync(); expect(useAuthStore.getState().user?.id).toBe('other'); expect(useAuthStore.getState().user?.orders).toEqual([]);
+});
+it('retains same-account order cache on token refresh', async () => {
+  vi.useFakeTimers(); mocks.completePendingSignup.mockResolvedValue(null);
+  const orders = [{ id: 'same-account-order' }] as User['orders']; useAuthStore.setState({ user: { ...customer, orders } });
+  mocks.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => table === 'profiles' ? { single: async () => ({ data: {}, error: null }) } : Promise.resolve({ data: [], error: null }) }) }));
+  authListener('TOKEN_REFRESHED', { access_token: 'synthetic', user: { id: customer.id, created_at: '2026-01-01' } });
+  await vi.runAllTimersAsync(); expect(useAuthStore.getState().user?.orders).toEqual(orders);
+});
+it('does not restore a previous account when an address deletion finishes late', async () => {
+  let complete: (value: unknown) => void = () => {};
+  const request = new Promise(resolve => { complete = resolve; });
+  mocks.from.mockReturnValue({ delete: () => ({ eq: () => request }) });
+  const deleting = useAuthStore.getState().deleteAddress('owned-old-address');
+  useAuthStore.setState({ user: { ...customer, id: 'other' } }); complete({ error: null }); await deleting;
+  expect(useAuthStore.getState().user?.id).toBe('other');
+});
+it('a slower password sign-in cannot overwrite a later sign-in', async () => {
+  let complete: (value: unknown) => void = () => {};
+  const older = new Promise(resolve => { complete = resolve; });
+  const result = (id: string) => ({ data: { user: { id, created_at: '2026-01-01' }, session: { access_token: 'synthetic', user: { id } } }, error: null });
+  mocks.signInWithPassword.mockReturnValueOnce(older).mockResolvedValueOnce(result('latest'));
+  mocks.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => table === 'profiles' ? { single: async () => ({ data: {}, error: null }) } : Promise.resolve({ data: [], error: null }) }) }));
+  const previous = useAuthStore.getState().signInWithPassword('09110000001', 'synthetic');
+  await useAuthStore.getState().signInWithPassword('09110000002', 'synthetic'); complete(result('previous')); await previous;
+  expect(useAuthStore.getState().user?.id).toBe('latest');
+});
