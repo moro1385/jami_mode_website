@@ -2,7 +2,7 @@ const refs = new Set(['klfmscuogsocfjxqkuib', 'cifhcrlmjnsxpkhyloen']);
 const count = value => Number.isSafeInteger(value) && value >= 0;
 export function maintenanceOptions(args) {
   const [task, ...rest] = args;
-  if (!['report', 'expire', 'reconcile'].includes(task)) throw new Error('Invalid maintenance task');
+  if (!['report', 'check', 'expire', 'reconcile'].includes(task)) throw new Error('Invalid maintenance task');
   const options = { task, batch: 50, execute: false };
   const seen = new Set();
   for (let i = 0; i < rest.length; i++) {
@@ -17,8 +17,8 @@ export function maintenanceOptions(args) {
       options.batch = Number(value);
     } else throw new Error('Unknown maintenance option');
   }
-  if (!refs.has(options.ref) || options.batch > 100 || (task !== 'report' && !options.execute)
-      || (task === 'report' && (options.execute || seen.has('--batch')))) throw new Error('Invalid maintenance options');
+  if (!refs.has(options.ref) || options.batch > 100 || (!['report', 'check'].includes(task) && !options.execute)
+      || (['report', 'check'].includes(task) && (options.execute || seen.has('--batch')))) throw new Error('Invalid maintenance options');
   return Object.freeze(options);
 }
 export function maintenanceConfig(options, env) {
@@ -45,7 +45,7 @@ export function maintenanceFetch(origin, transport = globalThis.fetch) {
   };
 }
 export async function runMaintenance(options, client) {
-  const report = options.task === 'report';
+  const report = ['report', 'check'].includes(options.task);
   const { data, error } = await client.rpc(report ? 'trusted_maintenance_status' : 'trusted_maintenance_run', report ? {} : {
     p_expire_limit: options.task === 'expire' ? options.batch : 0,
     p_reconcile_limit: options.task === 'reconcile' ? options.batch : 0,
@@ -57,12 +57,16 @@ export async function runMaintenance(options, client) {
       if (!count(data[key])) throw new Error('Invalid maintenance report');
       result[key] = data[key];
     }
-    if (data.lastRun === null) result.lastRun = null;
-    else {
-      const last = data.lastRun;
+    const lastRun = last => {
+      if (last === null) return null;
       if (!last || typeof last.finishedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}T/.test(last.finishedAt)
         || !['expired', 'settled', 'pending'].every(key => count(last[key]))) throw new Error('Invalid last run');
-      result.lastRun = { finishedAt: last.finishedAt, expired: last.expired, settled: last.settled, pending: last.pending };
+      return { finishedAt: last.finishedAt, expired: last.expired, settled: last.settled, pending: last.pending };
+    };
+    result.lastRun = lastRun(data.lastRun);
+    if (Object.hasOwn(data, 'lastExpiryRun')) {
+      result.lastExpiryRun = lastRun(data.lastExpiryRun);
+      if (result.lastExpiryRun && (result.lastExpiryRun.settled !== 0 || result.lastExpiryRun.pending !== 0)) throw new Error('Invalid expiry report');
     }
     return result;
   }

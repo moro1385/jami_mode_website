@@ -29,6 +29,18 @@ describe('maintenance command boundaries',()=>{
  });
 });
 describe('maintenance actions and sanitized output',()=>{
+ it('check only reads status and preserves the separate expiry timestamp',async()=>{
+  const last={finishedAt:'2026-10-19T18:00:00Z',expired:0,settled:0,pending:0};
+  const rpc=vi.fn().mockResolvedValue({data:{...status,lastRun:last,lastExpiryRun:{...last,private:'omit'}}});
+  expect(await runMaintenance(options('check'),{rpc})).toEqual({...status,lastRun:last,lastExpiryRun:last});
+  expect(rpc).toHaveBeenCalledWith('trusted_maintenance_status',{});
+  expect(()=>options('check',['--execute'])).toThrow();expect(()=>options('check',['--batch','25'])).toThrow();
+ });
+ it('rejects financial results in an expiry timestamp',async()=>{
+  const data={...status,lastExpiryRun:{finishedAt:'2026-10-19T18:00:00Z',expired:0,settled:1,pending:0}};
+  await expect(runMaintenance(options('check'),{rpc:vi.fn().mockResolvedValue({data})})).rejects.toThrow();
+ });
+
  it('report uses only the read-only status RPC and strips unexpected output',async()=>{
   const rpc=vi.fn().mockResolvedValue({data:{...status,secret:'never-print',customer:'never-print'}});
   expect(await runMaintenance(options(),{rpc})).toEqual(status);expect(rpc).toHaveBeenCalledWith('trusted_maintenance_status',{});

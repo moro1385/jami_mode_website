@@ -32,7 +32,8 @@ await new Promise(resolve => server.close(resolve));
 let started = false;
 let failed = false;
 try {
-  run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '--encoding=UTF8', '--no-locale']);
+  // Disposable test cluster only: skip initdb's initial disk sync, not server/WAL fsync.
+  run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '--encoding=UTF8', '--no-locale', '--no-sync']);
   // TCP only: distro defaults may point Unix sockets at /var/run/postgresql,
   // which an unprivileged CI runner cannot write. Clients already pin loopback.
   run('pg_ctl', ['-D', data, '-l', join(directory, 'postgres.log'), '-o', `-h 127.0.0.1 -p ${port} -c unix_socket_directories=`, '-w', 'start']);
@@ -47,6 +48,7 @@ try {
   process.stdout.write(psql('-f', 'ops/test-phase0-maintenance.sql'));
   psql('-c', "DELETE FROM auth.users WHERE id='10000000-0000-0000-0000-000000000999'" );
   process.stdout.write(psql('-f', 'supabase/test-bootstrap/validation/assertions.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/log_retention.sql'));
 } catch (error) {
   failed = true;
   const log = join(directory, 'postgres.log');

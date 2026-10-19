@@ -1,3 +1,6 @@
+## Monitoring/retention preparation — 2026-10-19
+The manifest now contains 27 files. File 27 adds a distinct expiry-work status timestamp and private bounded Cron-log retention with append-only summaries. No hosted installation, pruning or daily scheduling has occurred for this new file. See [the monitoring and retention runbook](../../docs/phase0-monitoring-retention.md). Prior file-count notes below are historical.
+
 ## Maintenance preparation — 2026-10-19
 The manifest now contains 26 files. File 26 adds service-only maintenance status, explicit bounded operations and an append-only operation log. Its source and copy hashes are pinned. It does not install Cron or schedule any work. The new migration was separately approved and applied to jamimode-test as hosted version 20261019155408; service-only metadata and read-only HTTP checks passed. Production and Cron activation are still pending separate approval. This does not mean the entire 26-file bootstrap was replayed remotely. See [the maintenance runbook](../../docs/phase0-maintenance-operations.md). The 25-file note below describes the preceding package.
 
