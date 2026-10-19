@@ -1,8 +1,11 @@
+import { browserStorageKey } from '../../config/supabase-public.js';
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { normalizePhone } from "@/lib/phone";
+import { completePendingSignup, saveProfileEdits } from "@/lib/profileWrites";
 import { useCartStore } from "./cartStore";
+import { useCheckoutStore } from "./checkoutStore";
 import { flushCartToServer } from "@/lib/cartSync";
 import type { Address, Session, User } from "@/types/auth";
 import type { Session as SupabaseSession } from "@supabase/supabase-js";
@@ -36,75 +39,83 @@ const mapSupabaseSession = (s: SupabaseSession | null): Session | null => {
 export const useAuthStore = create<AuthStore>()(
   persist(
     (set, get) => {
-      // Set up onAuthStateChange listener
-      supabase.auth.onAuthStateChange(async (event, currentSession) => {
+      let authEventVersion = 0;
+      let signedOutVersion = 0;
+      let passwordSignInVersion = 0;
+      const refreshAuthenticatedUser = async (currentSession: SupabaseSession | null, eventVersion: number) => {
+        const session = mapSupabaseSession(currentSession);
+        if (!session) return;
+        if (currentSession?.user) {
+
+          // Check for pending signup profile data before reading
+          let newProfileData: { firstName: string; lastName: string } | null = null;
+          try {
+            newProfileData = await completePendingSignup(currentSession.user);
+          } catch (e) {
+            // Keep pending data for a retry; authentication remains available.
+            console.error("Failed to save signup profile", e);
+          }
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", currentSession.user.id)
+            .single();
+
+          const { data: dbAddresses } = await supabase
+            .from("addresses")
+            .select("*")
+            .eq("user_id", currentSession.user.id);
+
+          const mappedAddresses: Address[] = (dbAddresses || []).map((dbA) => ({
+            id: dbA.id,
+            label: dbA.label || "",
+            recipient: dbA.recipient || "",
+            phone: dbA.phone || "",
+            country: dbA.country || "",
+            city: dbA.city || "",
+            line1: dbA.line1 || "",
+            line2: dbA.line2 || "",
+            postalCode: dbA.postal_code || "",
+            isDefault: dbA.is_default || false,
+          }));
+
+          const currentUser = get().user?.id === currentSession.user.id ? get().user : null;
+          const user: User = {
+            id: currentSession.user.id,
+            phone: currentSession.user.phone || profile?.phone || "",
+            firstName: profile?.first_name || (newProfileData?.firstName ?? ""),
+            lastName: profile?.last_name || (newProfileData?.lastName ?? ""),
+            email: profile?.email || currentSession.user.email,
+            createdAt: currentSession.user.created_at,
+            addresses: mappedAddresses,
+            wallet: { balance: profile?.wallet_balance || 0, currencyCode: "IRR", transactions: [] },
+            orders: currentUser?.orders || [],
+          };
+          if (eventVersion === authEventVersion) set({ session, user });
+        } else {
+           if (eventVersion === authEventVersion) set({ session });
+        }
+      };
+      // Return synchronously: awaiting another Supabase request inside the Auth
+      // callback can deadlock its session lock. Ignore stale completed hydration.
+      supabase.auth.onAuthStateChange((event, currentSession) => {
+        const eventVersion = ++authEventVersion;
+        if (event === 'SIGNED_OUT' || (currentSession?.user && get().user && currentSession.user.id !== get().user?.id)) {
+          useCartStore.getState().clearCart();
+          useCheckoutStore.getState().clearCheckout();
+          set({ session: null, user: null });
+        }
         if (event === 'SIGNED_OUT') {
+          signedOutVersion++;
           set({ session: null, user: null });
         } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-          const session = mapSupabaseSession(currentSession);
-          if (!session) return;
-          if (currentSession?.user) {
-
-            // Check for pending signup profile data before reading
-            const pendingStr = sessionStorage.getItem("jamimode-pending-signup");
-            let newProfileData = null;
-            if (pendingStr) {
-               try {
-                 newProfileData = JSON.parse(pendingStr);
-                 // The session is now active, so RLS permits inserting the profile
-                 await supabase.from("profiles").upsert({
-                    id: currentSession.user.id,
-                    first_name: newProfileData.firstName,
-                    last_name: newProfileData.lastName,
-                    phone: currentSession.user.phone || ""
-                 });
-               } catch (e) {
-                 console.error("Failed to parse or insert pending profile", e);
-               } finally {
-                 sessionStorage.removeItem("jamimode-pending-signup");
-               }
-            }
-
-            const { data: profile } = await supabase
-              .from("profiles")
-              .select("*")
-              .eq("id", currentSession.user.id)
-              .single();
-
-            const { data: dbAddresses } = await supabase
-              .from("addresses")
-              .select("*")
-              .eq("user_id", currentSession.user.id);
-
-            const mappedAddresses: Address[] = (dbAddresses || []).map((dbA) => ({
-              id: dbA.id,
-              label: dbA.label || "",
-              recipient: dbA.recipient || "",
-              phone: dbA.phone || "",
-              country: dbA.country || "",
-              city: dbA.city || "",
-              line1: dbA.line1 || "",
-              line2: dbA.line2 || "",
-              postalCode: dbA.postal_code || "",
-              isDefault: dbA.is_default || false,
-            }));
-
-            const currentUser = get().user;
-            const user: User = {
-              id: currentSession.user.id,
-              phone: currentSession.user.phone || profile?.phone || "",
-              firstName: profile?.first_name || (newProfileData?.firstName ?? ""),
-              lastName: profile?.last_name || (newProfileData?.lastName ?? ""),
-              email: profile?.email || currentSession.user.email,
-              createdAt: currentSession.user.created_at,
-              addresses: mappedAddresses,
-              wallet: { balance: profile?.wallet_balance || 0, currencyCode: "IRR", transactions: [] },
-              orders: currentUser?.orders || [],
-            };
-            set({ session, user });
-          } else {
-             set({ session });
-          }
+          setTimeout(() => {
+            if (eventVersion !== authEventVersion) return;
+            void refreshAuthenticatedUser(currentSession, eventVersion).catch((error) => {
+              console.error("Failed to refresh authenticated profile", error);
+            });
+          }, 0);
         }
       });
 
@@ -119,12 +130,19 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         bootstrap: async () => {
+          const eventVersion = authEventVersion;
           set({ isBootstrapping: true });
           try {
             const { data: { session: currentSession }, error } = await supabase.auth.getSession();
             if (error || !currentSession) {
               set({ session: null, user: null });
               return;
+            }
+
+            try {
+              await completePendingSignup(currentSession.user);
+            } catch (e) {
+              console.error("Failed to save signup profile", e);
             }
 
             const { data: profile } = await supabase
@@ -151,7 +169,8 @@ export const useAuthStore = create<AuthStore>()(
               isDefault: dbA.is_default || false,
             }));
 
-            const currentUser = get().user;
+            if (eventVersion !== authEventVersion) return;
+            const currentUser = get().user?.id === currentSession.user.id ? get().user : null;
             set({
               session: mapSupabaseSession(currentSession),
               user: {
@@ -167,13 +186,15 @@ export const useAuthStore = create<AuthStore>()(
               }
             });
           } catch {
-            set({ session: null, user: null });
+            if (eventVersion === authEventVersion) set({ session: null, user: null });
           } finally {
             set({ isBootstrapping: false });
           }
         },
 
         signInWithPassword: async (phone, password) => {
+          const loginVersion = ++passwordSignInVersion;
+          const signOutVersion = signedOutVersion;
           const normalized = normalizePhone(phone);
           const { data, error } = await supabase.auth.signInWithPassword({ phone: normalized, password });
           if (error) throw new Error(error.message);
@@ -203,7 +224,8 @@ export const useAuthStore = create<AuthStore>()(
               isDefault: dbA.is_default || false,
             }));
 
-            const currentUser = get().user;
+            if (signOutVersion !== signedOutVersion || loginVersion !== passwordSignInVersion) return;
+            const currentUser = get().user?.id === data.user.id ? get().user : null;
             set({
               session: mapSupabaseSession(data.session),
               user: {
@@ -222,6 +244,7 @@ export const useAuthStore = create<AuthStore>()(
         },
 
         signUp: async (input) => {
+          const signOutVersion = signedOutVersion;
           const normalized = normalizePhone(input.phone);
 
           const { data: existingProfile } = await supabase
@@ -234,21 +257,25 @@ export const useAuthStore = create<AuthStore>()(
             throw new Error("An account with this phone number already exists");
           }
 
+          // Store before signUp: SIGNED_IN can fire before its promise resolves.
+          const pendingSignup = JSON.stringify({ phone: normalized, firstName: input.firstName, lastName: input.lastName });
+          sessionStorage.setItem("jamimode-pending-signup", pendingSignup);
           const { data, error } = await supabase.auth.signUp({
             phone: normalized,
             password: input.password
+          }).catch((error) => {
+            if (sessionStorage.getItem("jamimode-pending-signup") === pendingSignup) sessionStorage.removeItem("jamimode-pending-signup");
+            throw error;
           });
-          if (error) throw new Error(error.message);
+          if (error) {
+            if (sessionStorage.getItem("jamimode-pending-signup") === pendingSignup) sessionStorage.removeItem("jamimode-pending-signup");
+            throw new Error(error.message);
+          }
 
           if (data.user) {
-            // Save names for insertion after OTP verify establishes session
-            sessionStorage.setItem("jamimode-pending-signup", JSON.stringify({
-              firstName: input.firstName,
-              lastName: input.lastName
-            }));
-
             if (data.session) {
-              const currentUser = get().user;
+              if (signOutVersion !== signedOutVersion) return;
+              const currentUser = get().user?.id === data.user.id ? get().user : null;
               set({
                 session: mapSupabaseSession(data.session),
                 user: {
@@ -259,7 +286,7 @@ export const useAuthStore = create<AuthStore>()(
                   email: data.user.email, // At signup, we rely on auth user email if any
                   createdAt: data.user.created_at,
                   addresses: currentUser?.addresses || [],
-                  wallet: currentUser?.wallet || { balance: 0, currencyCode: "USD", transactions: [] },
+                  wallet: currentUser?.wallet || { balance: 0, currencyCode: "IRR", transactions: [] },
                   orders: currentUser?.orders || [],
                 }
               });
@@ -294,21 +321,17 @@ export const useAuthStore = create<AuthStore>()(
 
         updateProfile: async (patch) => {
           const { session, user } = get();
-          if (!session || !user) return;
+          if (!session || !user) throw new Error("Sign in before editing your profile");
 
-          const updateData: { first_name?: string; last_name?: string; email?: string } = {};
-          if (patch.firstName !== undefined) updateData.first_name = patch.firstName;
-          if (patch.lastName !== undefined) updateData.last_name = patch.lastName;
-          if (patch.email !== undefined) updateData.email = patch.email;
-
-          if (Object.keys(updateData).length > 0) {
-              await supabase
-                .from("profiles")
-                .update(updateData)
-                .eq("id", user.id);
+          await saveProfileEdits(user.id, patch);
+          // Do not merge unchecked runtime properties (such as wallet) into state.
+          if (get().user?.id === user.id) {
+            const saved = { ...get().user! };
+            if (patch.firstName !== undefined) saved.firstName = patch.firstName;
+            if (patch.lastName !== undefined) saved.lastName = patch.lastName;
+            if (patch.email !== undefined) saved.email = patch.email;
+            set({ user: saved });
           }
-
-          set({ user: { ...user, ...patch } });
         },
 
         upsertAddress: async (address) => {
@@ -351,7 +374,7 @@ export const useAuthStore = create<AuthStore>()(
               await supabase.from("addresses").update({ is_default: true }).eq("id", id);
           }
 
-          set({ user: { ...user, addresses } });
+          if (get().user?.id === user.id) set({ user: { ...get().user!, addresses } });
         },
 
         deleteAddress: async (id) => {
@@ -367,7 +390,7 @@ export const useAuthStore = create<AuthStore>()(
                await supabase.from("addresses").update({ is_default: true }).eq("id", addresses[0].id);
             }
           }
-          set({ user: { ...user, addresses } });
+          if (get().user?.id === user.id) set({ user: { ...get().user!, addresses } });
         },
 
         setDefaultAddress: async (id) => {
@@ -378,12 +401,12 @@ export const useAuthStore = create<AuthStore>()(
           await supabase.from("addresses").update({ is_default: true }).eq("id", id);
 
           const addresses = user.addresses.map((a) => ({ ...a, isDefault: a.id === id }));
-          set({ user: { ...user, addresses } });
+          if (get().user?.id === user.id) set({ user: { ...get().user!, addresses } });
         },
       };
     },
     {
-      name: "jamimode-auth",
+      name: browserStorageKey("jamimode-auth", import.meta.env.MODE),
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ session: state.session, user: state.user }),
     }

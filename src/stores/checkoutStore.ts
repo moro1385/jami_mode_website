@@ -1,3 +1,4 @@
+import { browserStorageKey } from '../../config/supabase-public.js';
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import { Address } from "@/types/auth";
@@ -22,7 +23,7 @@ export const useCheckoutStore = create<CheckoutStore>()(
       clearCheckout: () => set({ selectedAddress: null, shippingMethod: null, shippingCost: 0 }),
     }),
     {
-      name: "checkout-storage",
+      name: browserStorageKey("checkout-storage", import.meta.env.MODE),
       storage: createJSONStorage(() => sessionStorage),
     }
   )

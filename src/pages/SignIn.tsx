@@ -1,5 +1,6 @@
+import { authPath, authReturn } from "@/lib/authReturn";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Loader2, Lock, MessageSquare, Smartphone } from "lucide-react";
 import AuthShell from "@/components/auth/AuthShell";
 import FormField from "@/components/auth/FormField";
@@ -16,6 +17,8 @@ const sanitizePhoneInput = (val: string) => {
 
 export default function SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const destination = authReturn(location.search);
   const signInWithPassword = useAuthStore((s) => s.signInWithPassword);
 
   const [phone, setPhone] = useState("");
@@ -52,7 +55,7 @@ export default function SignIn() {
     try {
       await signInWithPassword(finalPhone, password); // <-- اینجا finalPhone رو به تابع میدیم
       toast.success("خوش آمدید");
-      navigate("/account", { replace: true });
+      navigate(destination, { replace: true });
     } catch (error) {
       const msg = error instanceof Error ? error.message : "خطایی رخ داد. لطفاً دوباره تلاش کنید.";
       setFormError(msg);
@@ -70,7 +73,7 @@ export default function SignIn() {
       footer={
         <p className="text-sm text-muted-foreground">
           حساب کاربری ندارید؟{" "}
-          <Link to="/signup" className="text-foreground underline underline-offset-4 hover:text-accent transition-colors">
+          <Link to={authPath("/signup", destination)} className="text-foreground underline underline-offset-4 hover:text-accent transition-colors">
             ثبت نام
           </Link>
         </p>
@@ -136,7 +139,7 @@ export default function SignIn() {
         </div>
 
         <Link
-          to="/signin/otp"
+          to={authPath("/signin/otp", destination)}
           className="w-full h-12 rounded-full border border-foreground text-foreground text-sm font-medium hover:bg-foreground hover:text-primary-foreground transition-colors flex items-center justify-center gap-2"
         >
           <MessageSquare className="w-4 h-4" />

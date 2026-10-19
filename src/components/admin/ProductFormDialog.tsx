@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -368,6 +369,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
     // Safety net: slugify the final value before saving
     const finalValues = {
       ...values,
+      name: values.name,
       slug: slugify(values.slug)
     };
 
@@ -391,14 +393,14 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
 
       onSuccess();
       onOpenChange(false);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving product:", error);
 
       // Catch duplicate slug error
-      if (error?.code === "23505" || (error?.message && error.message.includes("products_slug_key"))) {
+      if ((typeof error === "object" && error !== null && "code" in error && error.code === "23505") || errorMessage(error, "").includes("products_slug_key")) {
         toast.error("این نامک (Slug) قبلاً برای محصول دیگری استفاده شده — لطفاً کمی تغییرش بده.");
       } else {
-        toast.error(error?.message || "ذخیره محصول با شکست مواجه شد");
+        toast.error(errorMessage(error, "ذخیره محصول با شکست مواجه شد"));
       }
     } finally {
       setIsSubmitting(false);

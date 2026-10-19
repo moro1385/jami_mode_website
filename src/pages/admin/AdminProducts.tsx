@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -57,7 +58,7 @@ function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess
       onSuccess();
     } catch (err: unknown) {
       console.error("Error updating price:", err);
-      toast.error((err as Error).message || "بروزرسانی قیمت با شکست مواجه شد");
+      toast.error(errorMessage(err, "بروزرسانی قیمت با شکست مواجه شد"));
       setEditValue(currentPrice?.toString() || "");
     } finally {
       setIsSaving(false);
@@ -140,7 +141,7 @@ export default function AdminProducts() {
       fetchProducts();
     } catch (err: unknown) {
       console.error("Error deleting product:", err);
-      toast.error(err.message || "حذف محصول با شکست مواجه شد");
+      toast.error(errorMessage(err, "حذف محصول با شکست مواجه شد"));
     }
   };
 
@@ -166,7 +167,7 @@ export default function AdminProducts() {
       }
     } catch (err: unknown) {
       console.error("Error duplicating product:", err);
-      toast.error((err as Error).message || "کپی محصول با شکست مواجه شد");
+      toast.error(errorMessage(err, "کپی محصول با شکست مواجه شد"));
     }
   };
 

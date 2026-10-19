@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export function ProductImagesManager({ productId }: ProductImagesManagerProps) {
       setImages(parsedImages);
     } catch (err: unknown) {
       console.error("Error fetching images:", err);
-      toast.error(err.message || "Failed to load images");
+      toast.error(errorMessage(err, "Failed to load images"));
     } finally {
       setIsLoading(false);
     }
@@ -151,7 +152,7 @@ export function ProductImagesManager({ productId }: ProductImagesManagerProps) {
       toast.success("تصویر با موفقیت بارگذاری شد");
     } catch (err: unknown) {
       console.error("Error uploading image:", err);
-      toast.error(err.message || "بارگذاری تصویر با شکست مواجه شد");
+      toast.error(errorMessage(err, "بارگذاری تصویر با شکست مواجه شد"));
     } finally {
       setIsUploading(false);
       // Reset input
@@ -191,7 +192,7 @@ export function ProductImagesManager({ productId }: ProductImagesManagerProps) {
 
     } catch (err: unknown) {
       console.error("Error deleting image:", err);
-      toast.error(err.message || "حذف تصویر با شکست مواجه شد");
+      toast.error(errorMessage(err, "حذف تصویر با شکست مواجه شد"));
     }
   }
 

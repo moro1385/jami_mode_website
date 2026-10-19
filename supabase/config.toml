@@ -1,1 +1,19 @@
 project_id = "oggwlybzuudorcmooxmy"
+# Preserve the JWT checks already enabled on the four production endpoints.
+# Always select the intended deployment project explicitly with --project-ref.
+[functions.bitpay-init]
+verify_jwt = true
+
+[functions.bitpay-wallet-init]
+verify_jwt = true
+
+[functions.bitpay-verify]
+verify_jwt = true
+
+[functions.bitpay-wallet-verify]
+verify_jwt = true
+
+# Auth signs webhook requests before a user JWT exists. Preserve the current
+# gateway setting; the handler must verify the Standard Webhooks signature.
+[functions.send-sms]
+verify_jwt = false

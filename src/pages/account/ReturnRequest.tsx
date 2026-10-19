@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { normalizePhone, isValidPhone } from "@/lib/phone";
 
+import { uploadReturnImages, cleanupReturnImages, validateReturnImage } from '@/lib/returnImages';
+
 interface Order {
   id: string;
   number: string;
@@ -62,7 +64,7 @@ export default function ReturnRequest() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const selectedFiles = Array.from(e.target.files);
-      const validFiles = selectedFiles.filter((file) => file.type.startsWith("image/"));
+      const validFiles = selectedFiles.filter((file) => (() => { try { validateReturnImage(file); return true; } catch { return false; } })());
 
       if (validFiles.length !== selectedFiles.length) {
         toast.error("لطفاً فقط فایل‌های تصویری آپلود کنید.");
@@ -74,33 +76,6 @@ export default function ReturnRequest() {
 
   const removeFile = (index: number) => {
     setFiles((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const uploadImages = async (): Promise<string[]> => {
-    const uploadedUrls: string[] = [];
-
-    for (const file of files) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `${user?.id}/${fileName}`;
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('return-request-images')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        throw new Error('خطا در آپلود تصاویر. لطفاً دوباره تلاش کنید.');
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('return-request-images')
-        .getPublicUrl(filePath);
-
-      uploadedUrls.push(publicUrl);
-    }
-
-    return uploadedUrls;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,14 +104,13 @@ export default function ReturnRequest() {
       return;
     }
 
+    if (!user || isSubmitting) return;
     setErrors({});
     setIsSubmitting(true);
+    let uploadedPaths: string[] = [];
     try {
       // 1. Upload images first
-      let uploadedUrls: string[] = [];
-      if (files.length > 0) {
-        uploadedUrls = await uploadImages();
-      }
+      uploadedPaths = await uploadReturnImages(user.id, files);
 
       // 2. Create the return request record
       const { error } = await supabase
@@ -146,11 +120,11 @@ export default function ReturnRequest() {
           order_id: selectedOrderId,
           phone: normalizedPhone,
           description,
-          image_urls: uploadedUrls,
+          image_urls: uploadedPaths,
         });
 
       if (error) {
-        console.error("Insert error:", error);
+        await cleanupReturnImages(uploadedPaths);
         throw new Error("خطا در ثبت درخواست. لطفاً دوباره تلاش کنید.");
       }
 

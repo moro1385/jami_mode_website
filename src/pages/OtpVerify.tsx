@@ -1,3 +1,4 @@
+import { authPath, authReturn } from "@/lib/authReturn";
 import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft, Loader2 } from "lucide-react";
@@ -10,6 +11,7 @@ import { toast } from "sonner";
 export default function OtpVerify() {
   const navigate = useNavigate();
   const location = useLocation();
+  const destination = authReturn(location.search);
   const phone = (location.state as { phone?: string } | null)?.phone ?? "";
   const verifyOtp = useAuthStore((s) => s.verifyOtp);
   const requestOtp = useAuthStore((s) => s.requestOtp);
@@ -21,8 +23,8 @@ export default function OtpVerify() {
   const [remaining, setRemaining] = useState(() => (phone ? getOtpRemainingSeconds(phone) : 0));
 
   useEffect(() => {
-    if (!phone) navigate("/signin/otp", { replace: true });
-  }, [phone, navigate]);
+    if (!phone) navigate(authPath("/signin/otp", destination), { replace: true });
+  }, [phone, navigate, destination]);
 
   useEffect(() => {
     if (remaining <= 0) return;
@@ -38,7 +40,7 @@ export default function OtpVerify() {
     try {
       await verifyOtp(phone, code);
       toast.success("شما وارد شدید");
-      navigate("/account", { replace: true });
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "تایید کد انجام نشد. لطفاً دوباره تلاش کنید.");
       setCode("");
@@ -76,7 +78,7 @@ export default function OtpVerify() {
       }
       footer={
         <Link
-          to="/signin/otp"
+          to={authPath("/signin/otp", destination)}
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />

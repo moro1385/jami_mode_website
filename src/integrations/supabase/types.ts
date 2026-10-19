@@ -59,71 +59,10 @@ export type Database = {
         }
         Relationships: []
       }
-      cart_items: {
-        Row: {
-          cart_id: string
-          created_at: string
-          id: string
-          product_id: string
-          quantity: number
-          variant_id: string | null
-        }
-        Insert: {
-          cart_id: string
-          created_at?: string
-          id?: string
-          product_id: string
-          quantity?: number
-          variant_id?: string | null
-        }
-        Update: {
-          cart_id?: string
-          created_at?: string
-          id?: string
-          product_id?: string
-          quantity?: number
-          variant_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "cart_items_cart_id_fkey"
-            columns: ["cart_id"]
-            isOneToOne: false
-            referencedRelation: "carts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_items_product_id_fkey"
-            columns: ["product_id"]
-            isOneToOne: false
-            referencedRelation: "products"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "cart_items_variant_id_fkey"
-            columns: ["variant_id"]
-            isOneToOne: false
-            referencedRelation: "product_variants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       carts: {
-        Row: {
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
+        Row: { user_id: string; items: Json; updated_at: string }
+        Insert: { user_id: string; items?: Json; updated_at?: string }
+        Update: { user_id?: string; items?: Json; updated_at?: string }
         Relationships: []
       }
       categories: {
@@ -331,6 +270,7 @@ export type Database = {
       }
       products: {
         Row: {
+          is_out_of_stock: boolean
           category_id: string | null
           created_at: string
           description: string | null
@@ -352,6 +292,7 @@ export type Database = {
           colors: string[] | null
         }
         Insert: {
+          is_out_of_stock?: boolean
           category_id?: string | null
           created_at?: string
           description?: string | null
@@ -373,6 +314,7 @@ export type Database = {
           colors?: string[] | null
         }
         Update: {
+          is_out_of_stock?: boolean
           category_id?: string | null
           created_at?: string
           description?: string | null

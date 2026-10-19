@@ -1,3 +1,4 @@
+import { errorMessage } from "@/lib/errors";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export function ProductVariantsManager({ productId }: ProductVariantsManagerProp
       setVariants(data || []);
     } catch (err: unknown) {
       console.error("Error fetching variants:", err);
-      toast.error(err.message || "بارگیری تنوع‌ها با شکست مواجه شد");
+      toast.error(errorMessage(err, "بارگیری تنوع‌ها با شکست مواجه شد"));
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +77,7 @@ export function ProductVariantsManager({ productId }: ProductVariantsManagerProp
       toast.success("تنوع اضافه شد");
     } catch (err: unknown) {
       console.error("Error adding variant:", err);
-      toast.error(err.message || "افزودن تنوع با شکست مواجه شد");
+      toast.error(errorMessage(err, "افزودن تنوع با شکست مواجه شد"));
     }
   }
 
@@ -91,18 +92,19 @@ export function ProductVariantsManager({ productId }: ProductVariantsManagerProp
       toast.success("تنوع حذف شد");
     } catch (err: unknown) {
       console.error("Error deleting variant:", err);
-      toast.error(err.message || "حذف تنوع با شکست مواجه شد");
+      toast.error(errorMessage(err, "حذف تنوع با شکست مواجه شد"));
     }
   }
 
-  async function handleUpdateVariant(id: string, field: keyof ProductVariant, value: unknown) {
+  async function handleUpdateVariant<K extends 'size' | 'color' | 'sku' | 'price' | 'stock_quantity'>(id: string, field: K, value: ProductVariant[K]) {
     try {
+      const update: Database['public']['Tables']['product_variants']['Update'] = { [field]: value === '' ? null : value };
       // Optimistic update in UI for typing
       setVariants(variants.map(v => v.id === id ? { ...v, [field]: value } : v));
 
       const { error } = await supabase
         .from("product_variants")
-        .update({ [field]: value === "" ? null : value })
+        .update(update)
         .eq("id", id);
 
       if (error) throw error;
