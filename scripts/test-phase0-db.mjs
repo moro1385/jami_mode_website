@@ -1,7 +1,7 @@
 // Fresh, loopback-only PostgreSQL cluster. Never accepts a connection URL and
 // never loads .env or Supabase's linked-project config. No production access.
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,10 +30,13 @@ await new Promise((resolve, reject) => { server.once('error', reject); server.li
 const port = server.address().port;
 await new Promise(resolve => server.close(resolve));
 let started = false;
+let failed = false;
 try {
   run('initdb', ['-D', data, '-U', 'postgres', '-A', 'trust', '--encoding=UTF8', '--no-locale']);
+  // TCP only: distro defaults may point Unix sockets at /var/run/postgresql,
+  // which an unprivileged CI runner cannot write. Clients already pin loopback.
+  run('pg_ctl', ['-D', data, '-l', join(directory, 'postgres.log'), '-o', `-h 127.0.0.1 -p ${port} -c unix_socket_directories=`, '-w', 'start']);
   started = true;
-  run('pg_ctl', ['-D', data, '-l', join(directory, 'postgres.log'), '-o', `-h 127.0.0.1 -p ${port}`, '-w', 'start']);
   let testDatabase = 'postgres';
   const psql = (...args) => run('psql', ['-X', '-A', '-t', '-w', '-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-d', testDatabase, '-v', 'ON_ERROR_STOP=1', ...args]);
   // Explicit dependency-correct subset; NOT a claim that historical migrations
@@ -87,15 +90,25 @@ try {
   await runPhase0Races({ psql, interactive });
   console.log('Phase 0 follow-up database assertions passed (local disposable PostgreSQL; synthetic Auth/Storage).');
 } catch (error) {
+  failed = true;
+  const log = join(directory, 'postgres.log');
+  if (existsSync(log)) process.stderr.write(readFileSync(log, 'utf8'));
   if (error.stdout) process.stdout.write(String(error.stdout));
   if (error.stderr) process.stderr.write(String(error.stderr));
   throw error;
 } finally {
-  if (started) run('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop']);
+  let safeToRemove = true;
+  try {
+    if (started || existsSync(join(data, 'postmaster.pid'))) run('pg_ctl', ['-D', data, '-m', 'fast', '-w', 'stop']);
+  } catch (error) {
+    safeToRemove = false;
+    if (!failed) throw error;
+    console.error('Test cluster shutdown failed; preserving temporary data and original failure.');
+  }
   // Delete only this run's verified mkdtemp directory, after stopping its server.
   const expectedParent = resolve(tmpdir());
   if (dirname(resolve(directory)) !== expectedParent || !directory.startsWith(join(expectedParent, 'jami-containment-'))) {
     throw new Error('Refusing cleanup outside the test temporary directory');
   }
-  rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  if (safeToRemove) rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 }
