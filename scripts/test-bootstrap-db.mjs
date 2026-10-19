@@ -42,6 +42,10 @@ try {
   // Fresh synthetic platform, all 22 copied migrations, then scoped fixes.
   psql('-f', 'supabase/test-bootstrap/validation/platform.sql');
   psql('-v', 'target_project=cifhcrlmjnsxpkhyloen', '-f', 'supabase/test-bootstrap/bootstrap.psql');
+  // Validate the exact hosted acceptance SQL first, against an empty disposable baseline.
+  psql('-c', "INSERT INTO auth.users(id,phone) VALUES('10000000-0000-0000-0000-000000000999','+12025550101')" );
+  process.stdout.write(psql('-f', 'ops/test-phase0-maintenance.sql'));
+  psql('-c', "DELETE FROM auth.users WHERE id='10000000-0000-0000-0000-000000000999'" );
   process.stdout.write(psql('-f', 'supabase/test-bootstrap/validation/assertions.sql'));
 } catch (error) {
   failed = true;

@@ -47,4 +47,4 @@ RESET ROLE;
 DO $$ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.orders WHERE status='processing') THEN RAISE EXCEPTION 'Admin fulfillment failed'; END IF;
 END $$;
-\echo 'All 25 migrations, scoped bootstrap fixes, anonymous catalog, financial isolation, checkout settlement and admin fulfillment passed.'
+\echo 'All 26 migrations, scoped bootstrap fixes, anonymous catalog, financial isolation, checkout settlement and admin fulfillment passed.'

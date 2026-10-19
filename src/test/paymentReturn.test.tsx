@@ -29,7 +29,7 @@ function app(entry: string) {
 }
 beforeEach(() => {
   vi.resetAllMocks();
-  const login = async () => { mocks.state.session = { expiresAt: Date.now() + 60000 }; mocks.state.user = { id: "customer" }; };
+  const login = async () => { mocks.state.session = { userId: "customer", token: "synthetic-token", expiresAt: Date.now() + 60000 }; mocks.state.user = { id: "customer" }; };
   mocks.login.mockImplementation(login); mocks.otp.mockImplementation(login);
   mocks.request.mockResolvedValue({ expiresInSeconds: 60 });
   mocks.state = { session: null, user: null, isBootstrapping: false, bootstrap: vi.fn(), signInWithPassword: mocks.login, verifyOtp: mocks.otp, requestOtp: mocks.request };

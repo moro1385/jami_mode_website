@@ -176,6 +176,13 @@
       "correction": null,
       "sourceSha256": "9eb00a2c46e973c9b62d2df3fac5e67006c72b4989a0c6482ee010fdcf799b76",
       "bootstrapSha256": "9eb00a2c46e973c9b62d2df3fac5e67006c72b4989a0c6482ee010fdcf799b76"
+    },
+    {
+      "order": 26,
+      "filename": "20261019142741_phase0_maintenance_operations.sql",
+      "sourceSha256": "b8f06e6ea890be17d07c1636900b1615b4e832e8ff067797a0da4e66f4eca95d",
+      "bootstrapSha256": "b8f06e6ea890be17d07c1636900b1615b4e832e8ff067797a0da4e66f4eca95d",
+      "correction": null
     }
   ],
   "preflight": {

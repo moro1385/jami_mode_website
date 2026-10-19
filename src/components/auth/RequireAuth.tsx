@@ -14,14 +14,14 @@ export default function RequireAuth() {
   const isAuthenticated = !!session && session.expiresAt > Date.now();
 
   useEffect(() => {
-    if (isAuthenticated && !user) void bootstrap();
-  }, [isAuthenticated, user, bootstrap]);
+    if (isAuthenticated && user?.id !== session?.userId) void bootstrap();
+  }, [isAuthenticated, user, session?.userId, bootstrap]);
 
   if (!isAuthenticated) {
     return <Navigate to={authPath("/signin", location.pathname + location.search + location.hash)} replace />;
   }
 
-  if (!user || isBootstrapping) {
+  if (!user || user.id !== session?.userId || isBootstrapping) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center bg-[hsl(var(--warm-bg))]">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />

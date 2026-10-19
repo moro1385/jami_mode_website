@@ -85,9 +85,21 @@ try {
   psql('-f', 'supabase/migrations/20261019075415_phase0_payment_recovery.sql');
   psql('-f', 'supabase/migrations/20261019075416_phase0_private_return_images.sql');
   psql('-f', 'supabase/migrations/20261019075417_phase0_reservation_expiry.sql');
+  psql('-f', 'supabase/migrations/20261019142741_phase0_maintenance_operations.sql');
   process.stdout.write(psql('-f', 'supabase/tests/phase0-followup.sql'));
   const { runPhase0Races } = await import('./phase0-races.mjs');
   await runPhase0Races({ psql, interactive });
+  process.stdout.write(psql('-f', 'supabase/tests/maintenance_operations.sql'));
+  const maintainer = interactive();
+  try {
+    maintainer.child.stdin.write("BEGIN; SELECT pg_advisory_xact_lock(hashtextextended('jamimode-phase0-maintenance',0));\n\\echo MAINTENANCE_LOCKED\n");
+    await maintainer.until('MAINTENANCE_LOCKED');
+    const before = psql('-c', 'SELECT count(*) FROM checkout_private.maintenance_runs').trim();
+    const skipped = JSON.parse(psql('-c', 'SET ROLE service_role; SELECT public.trusted_maintenance_run(50,0)').trim().split('\n').at(-1));
+    if (skipped.skipped !== true || psql('-c', 'SELECT count(*) FROM checkout_private.maintenance_runs').trim() !== before) throw Error('Concurrent maintenance was not skipped');
+    maintainer.child.stdin.end('ROLLBACK;'); await maintainer.done;
+  } finally { maintainer.child.kill(); }
+  console.log('PASS: overlapping maintenance skips without mutation or duplicate run log.');
   console.log('Phase 0 follow-up database assertions passed (local disposable PostgreSQL; synthetic Auth/Storage).');
 } catch (error) {
   failed = true;
