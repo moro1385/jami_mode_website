@@ -1,3 +1,6 @@
+## Maintenance preparation — 2026-10-19
+The manifest now contains 26 files. File 26 adds service-only maintenance status, explicit bounded operations and an append-only operation log. Its source and copy hashes are pinned. It does not install Cron or schedule any work. The new migration was separately approved and applied to jamimode-test as hosted version 20261019155408; service-only metadata and read-only HTTP checks passed. Production and Cron activation are still pending separate approval. This does not mean the entire 26-file bootstrap was replayed remotely. See [the maintenance runbook](../../docs/phase0-maintenance-operations.md). The 25-file note below describes the preceding package.
+
 ## Follow-up preparation — 2026-10-19
 The manifest now contains 25 files, including three locally prepared Phase 0 follow-ups. Hash format v2 normalizes UTF-8 CRLF to LF in SQL text before hashing; other content changes still fail. The original 22 migration files are unchanged. Do not apply the hosted test bootstrap or these new migrations without separate approval. Private return images require a coordinated frontend/database release; payment recovery stays off until its migration and legacy callback compatibility are reviewed. The historical baseline description below refers to the original 22 files.
 

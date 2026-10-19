@@ -13,15 +13,16 @@
 !/tsconfig.app.json
 !/tsconfig.node.json
 !/components.json
-!/src/
-!/public/
-!/config/
-!/server/
-!/scripts/
+!/src
+!/public
+!/config
+!/server
+!/scripts
 
 # npm is the release lockfile. Root Bun locks remain in the repository only.
 /scripts/*
 !/scripts/generate-sitemap.mjs
+!/scripts/maintenance.mjs
 /src/test/
 /src/**/*.test.*
 /src/**/*.spec.*
