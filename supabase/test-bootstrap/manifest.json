@@ -183,6 +183,13 @@
       "sourceSha256": "b8f06e6ea890be17d07c1636900b1615b4e832e8ff067797a0da4e66f4eca95d",
       "bootstrapSha256": "b8f06e6ea890be17d07c1636900b1615b4e832e8ff067797a0da4e66f4eca95d",
       "correction": null
+    },
+    {
+      "order": 27,
+      "filename": "20261019183421_phase0_log_retention.sql",
+      "sourceSha256": "56edfa5a5c4a1321ec903a3777666ebe744bf389cfb20c26122b72b5d8d69888",
+      "bootstrapSha256": "56edfa5a5c4a1321ec903a3777666ebe744bf389cfb20c26122b72b5d8d69888",
+      "correction": null
     }
   ],
   "preflight": {

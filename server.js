@@ -1,4 +1,5 @@
 import express from "express";
+import { productionMaintenanceHealth, maintenanceHealthRouter, startMaintenanceWatch } from "./server/maintenance-health.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import bitpayRoutes from "./server/bitpay-routes.js";
@@ -14,6 +15,8 @@ app.use('/api/bitpay', createRateLimiter(), express.json({ limit: '32kb' }), exp
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
+const maintenanceHealth = productionMaintenanceHealth();
+app.use("/api/health", createRateLimiter(), maintenanceHealthRouter(maintenanceHealth));
 app.use("/api/bitpay", bitpayRoutes);
 app.use("/torob_api/v3", torobRoutes);
 app.use("/api", (_req, res) => res.status(404).json({ error: "API route not found" }));
@@ -29,4 +32,6 @@ app.use((error, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+const server = app.listen(PORT, () => console.log(`Server listening on port ${PORT}`));
+const stopMaintenanceWatch = startMaintenanceWatch(maintenanceHealth);
+server.once("close", stopMaintenanceWatch);
