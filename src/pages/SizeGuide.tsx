@@ -3,7 +3,7 @@ import React from 'react';
 export default function SizeGuide() {
   return (
     <article className="max-w-4xl mx-auto px-6 pt-8 pb-32 text-right" dir="rtl">
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         راهنمای سایز
       </h1>
 

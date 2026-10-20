@@ -32,7 +32,7 @@ export default function WhyJamiMode() {
           <p className="text-xl text-muted-foreground mb-4">
             چرا jamimode ؟
           </p>
-          <h2 className="text-3xl md:text-5xl font-display font-black text-foreground leading-tight">
+          <h2 className="text-3xl md:text-5xl font-display font-black text-foreground leading-tight md:leading-none">
             از راحتیِ نامرئی تا اوج عملکرد در تمرین
           </h2>
           <p className="mt-6 text-base leading-relaxed text-muted-foreground">

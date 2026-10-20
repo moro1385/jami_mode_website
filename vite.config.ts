@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { publicSupabaseConfig, testHtml } from "./config/supabase-public.js";
-import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -25,7 +24,7 @@ export default defineConfig(({ mode }) => {
       overlay: false,
     },
   },
-  plugins: [{ name: "test-network-isolation", transformIndexHtml: (html) => testHtml(html, localTest) }, react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [{ name: "test-network-isolation", transformIndexHtml: (html) => testHtml(html, localTest) }, react()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

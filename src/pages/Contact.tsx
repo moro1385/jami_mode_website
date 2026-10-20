@@ -44,7 +44,7 @@ export default function Contact() {
   // کلاس‌های استایل
   const labelClass = "block text-sm text-foreground mb-1 font-medium";
   const requiredClass = "text-accent text-xs mr-1"; // تبدیل ml به mr برای راست‌چین
-  const inputClass = "w-full px-0 py-2 border-0 border-b border-border bg-transparent text-foreground text-sm focus:outline-none focus:border-foreground transition-colors";
+  const inputClass = "w-full px-0 py-2 border-0 border-b border-border bg-transparent text-foreground text-sm focus:outline-hidden focus:border-foreground transition-colors";
 
   return (
     <>
@@ -58,10 +58,10 @@ export default function Contact() {
           
           {/* Left — Info */}
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-8 leading-tight">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-8 leading-tight md:leading-none">
               با ما در تماس باشید.
             </h1>
-            <p className="text-base md:text-lg leading-relaxed text-muted-foreground mb-10">
+            <p className="text-base md:text-lg leading-relaxed text-muted-foreground mb-10 md:leading-7">
               خوشحال می‌شویم صدای شما را بشنویم! چه سوالی درباره محصولات ما داشته باشید، چه برای پیگیری سفارش خود به کمک نیاز داشته باشید و چه بخواهید درباره شرایط فروش عمده صحبت کنید. تیم پشتیبانی جامی مد معمولاً در یک روز کاری پاسخگوی شما خواهد بود.
             </p>
             <div className="space-y-3">
@@ -80,7 +80,7 @@ export default function Contact() {
 
           {/* Right — Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            <p className="text-lg font-semibold text-foreground mb-2">فرم تماس</p>
+            <p className="text-lg font-semibold text-foreground mb-6">فرم تماس</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>

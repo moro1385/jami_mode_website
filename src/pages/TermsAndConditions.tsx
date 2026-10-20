@@ -1,11 +1,11 @@
 export default function TermsAndConditions() {
   return (
     <article className="max-w-3xl mx-auto px-6 pt-8 pb-32 text-right" dir="rtl">
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         قوانین و مقررات خرید از جامی مد
       </h1>
 
-      <div className="space-y-10 text-base md:text-lg leading-relaxed text-muted-foreground mb-16">
+      <div className="space-y-10 text-base md:text-lg leading-relaxed text-muted-foreground mb-16 md:leading-7">
 
         <section>
           <h2 className="text-2xl font-semibold text-foreground mb-4">۱. ثبت و ارسال سفارش</h2>

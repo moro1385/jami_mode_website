@@ -1,11 +1,11 @@
 export default function Wholesale() {
   return (
     <article className="max-w-3xl mx-auto px-6 pt-8 pb-32 text-right" dir="rtl">
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         همکاری و فروش عمده
       </h1>
 
-      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-16">
+      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-16 md:leading-7">
         <p>
           جامی مد با سال‌ها تجربه در زمینه تولید و عرضه پوشاک، آماده همکاری با فروشگاه‌ها و سازمان‌ها برای تامین عمده پوشاک با کیفیت است.
         </p>
