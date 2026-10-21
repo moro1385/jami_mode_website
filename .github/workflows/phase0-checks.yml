@@ -23,6 +23,8 @@ jobs:
           cache: npm
       - name: Frozen dependency installation without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Audit all locked dependencies, including build tools
+        run: npm audit --package-lock-only
       - run: npm test
       - run: npm run typecheck
       - run: npm run lint

@@ -33,3 +33,11 @@ No new database migration or runtime environment variable is required. The candi
 Phase0 notification delivery, real paid-flow/recovery acceptance and backup/restore remain deferred by the owner; this remediation does not resume them or declare the entire security phase complete.
 
 Sources: https://tailwindcss.com/docs/upgrade-guide ; https://github.com/advisories/GHSA-vfj7-8cjw-p6xm ; https://github.com/postcss/postcss-selector-parser/security/advisories/GHSA-rj75-hqrm-r3gf ; https://github.com/dcastil/tailwind-merge . Exact package metadata and audit responses were also read from the npm registry during this change.
+
+## Publication follow-up — 2026-10-21
+
+PR106 merged the Tailwind remediation as efaffc4c616cd421fd8a6f8aa6f2ff8ac637d35c after required PR CI passed; its post-merge main CI also passed. A fresh publication-time audit then reported a newly published high finding in Vite6.4.3, aggregating three launch-editor advisories (GHSA-698v-4r3x-3vcv, GHSA-r825-w8mm-5pxw and GHSA-587h-7wmj-h5pm). The prior zero-audit statement records the earlier registry snapshot, not a permanent exemption.
+
+The focused follow-up pins Vite6.4.5 within the same major version and updates the npm lock. It adds a full lockfile audit to normal Phase0 CI so new build-tool advisories block publication instead of relying solely on a local snapshot. Existing build/unit/type/lint checks and the fresh full/runtime audits are rerun before publication. No application, payment, database or CSS source change is part of this follow-up. Modern-browser and owner-deferred acceptance limits above remain.
+
+Upstream patch release: https://github.com/vitejs/vite/releases/tag/v6.4.5 . Publication and deployment are separate; the owner still performs Liara deployment.

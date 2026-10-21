@@ -1,3 +1,5 @@
+Publication update (2026-10-21): PR106 is merged as efaffc4 with green PR/main CI. A fresh audit found new Vite6.4.3 editor advisories; a focused Vite6.4.5 follow-up with a full lockfile CI audit passed local414test/type/lint/build validation and fresh full/runtime audits (both zero). Publication is tracked by its accompanying PR. Do not use yesterday's zero-audit snapshot as today's result. Neither package has owner-confirmed Liara deployment yet.
+
 # Phase 0 closeout status — 2026-10-20 (Asia/Tehran)
 
 Latest local follow-up: build dependency remediation on security/phase0-build-dependencies has received separate publication approval, subject to green CI: full and runtime audits both zero,414tests passed and34 offline visual states compared. Publication is tracked by the build-dependency PR; these dependency changes have not been deployed. See [build dependency remediation](phase0-build-dependencies.md). The owner confirmed deployment of the preceding monitoring release and both live health responses; its first scheduled retention run succeeded. Independent notifications are now explicitly deferred by the owner.
