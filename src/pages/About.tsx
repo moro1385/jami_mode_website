@@ -10,12 +10,12 @@ export default function About() {
         description="داستان ما از یک فروشگاه کوچکی در سال ۱۳۷۵ در بازار بزرگ تبریز آغاز شد."
       />
       {/* Headline */}
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         درباره جامی مد
       </h1>
 
       {/* First text block */}
-      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-24">
+      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-24 md:leading-7">
         <p>
           داستان ما از یک فروشگاه کوچکی در سال ۱۳۷۵ در بازار بزرگ تبریز آغاز شد. در تمام این سال‌ها، هدف اصلی ما تامین پوشاک باکیفیت و جلب رضایت مشتریان بوده است.
         </p>
@@ -29,13 +29,13 @@ export default function About() {
         <img
           src={aboutBg}
           alt="فروشگاه جامی مد"
-          className="w-full h-auto object-cover rounded-2xl shadow-sm"
+          className="w-full h-auto object-cover rounded-2xl shadow-xs"
           loading="lazy"
         />
       </div>
 
       {/* Second text block */}
-      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-16">
+      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-16 md:leading-7">
         
         {/* دقت کن به این h3 کلاس سایز دادم تا بزرگ بشه */}
         <h3 className="text-2xl md:text-3xl font-semibold text-foreground mt-8 mb-4">

@@ -88,7 +88,7 @@ export default function OtpRequest() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+          className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-xs hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "ارسال رمز یک‌بار مصرف"}
         </button>

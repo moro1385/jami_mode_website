@@ -3,11 +3,11 @@ import { Link } from 'react-router-dom';
 export default function ReturnPolicy() {
   return (
     <article className="max-w-3xl mx-auto px-6 pt-8 pb-32 text-right" dir="rtl">
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         شرایط مرجوعی و بازگشت کالا
       </h1>
 
-      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-16">
+      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-16 md:leading-7">
         <p>
           رضایت مندی مشتریان همواره از اولویت‏‌های جامی مد بوده است و در این راستا می‏‌کوشیم تا هر سفارش در شرایط مطلوب و مورد انتظار به دست مشتری برسد.
         </p>
@@ -23,7 +23,7 @@ export default function ReturnPolicy() {
         نحوه ثبت درخواست مرجوعی
       </h2>
 
-      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground">
+      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground md:leading-7">
         <p>
           در صورتی که محصول شما مشمول شرایط مرجوعی باشد، می‌توانید درخواست خود را از یکی از روش‌های زیر ثبت کنید:
         </p>

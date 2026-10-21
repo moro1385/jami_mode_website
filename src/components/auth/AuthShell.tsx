@@ -29,7 +29,7 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
             <p className="text-xs font-medium text-primary-foreground/70">
               عضویت
             </p>
-            <p className="mt-6 text-3xl xl:text-4xl font-light leading-snug text-primary-foreground">
+            <p className="mt-6 text-3xl xl:text-4xl font-light leading-snug text-primary-foreground xl:leading-10">
               نیازهای هر روزه‌ی شما، در یک کمد لباس منظم.
             </p>
             <p className="mt-6 text-sm text-primary-foreground/75 leading-relaxed">
@@ -43,7 +43,7 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
       </aside>
 
       <main className="flex items-center justify-center px-6 py-16 sm:px-10 lg:px-16">
-        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-2 duration-500 rounded-3xl bg-white/50 border border-foreground/10 shadow-sm p-6 sm:p-8">
+        <div className="w-full max-w-md animate-in fade-in slide-in-from-bottom-2 duration-500 rounded-3xl bg-white/50 border border-foreground/10 shadow-xs p-6 sm:p-8">
           {eyebrow && (
             <p className="text-xs font-medium text-accent">{eyebrow}</p>
           )}

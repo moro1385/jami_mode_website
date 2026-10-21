@@ -33,7 +33,7 @@ export default function CheckoutFailed() {
 
       {orderId && (
         <p className="text-sm text-muted-foreground mb-8">
-          شماره سفارش معلق: <span className="font-mono bg-muted px-2 py-1 rounded text-foreground">{orderId}</span>
+          شماره سفارش معلق: <span className="font-mono bg-muted px-2 py-1 rounded-sm text-foreground">{orderId}</span>
         </p>
       )}
 

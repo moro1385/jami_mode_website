@@ -22,7 +22,7 @@ export default function CategoryQuickNav() {
             <button
               key={cat.handle}
               onClick={() => openDialogFor(cat.handle, cat.label)}
-              className="flex flex-col items-center justify-center gap-3 p-4 min-w-[90px] md:min-w-[110px] rounded-2xl border border-border hover:border-accent hover:shadow-sm transition-all bg-card"
+              className="flex flex-col items-center justify-center gap-3 p-4 min-w-[90px] md:min-w-[110px] rounded-2xl border border-border hover:border-accent hover:shadow-xs transition-all bg-card"
             >
               <cat.Icon className="w-8 h-8 text-accent" />
               <span className="text-sm font-medium text-foreground whitespace-nowrap">{cat.label}</span>

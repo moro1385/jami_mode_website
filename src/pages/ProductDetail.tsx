@@ -141,7 +141,7 @@ selectedSize: activeOptions["Size"] ?? null,
                 {product.node.images.edges.map((img, idx) => (
                   <button
                     key={idx}
-                    className="flex-shrink-0 w-24 h-24 border focus:outline-none focus:ring-2 focus:ring-foreground snap-start bg-warm-bg rounded-2xl overflow-hidden"
+                    className="shrink-0 w-24 h-24 border focus:outline-hidden focus:ring-2 focus:ring-foreground snap-start bg-warm-bg rounded-2xl overflow-hidden"
                     onClick={() => {
                       const mainImg = document.getElementById('main-product-image');
                       if (mainImg) (mainImg as HTMLImageElement).src = img.node?.url;

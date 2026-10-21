@@ -36,7 +36,7 @@ const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
             aria-invalid={!!error}
             aria-describedby={error ? `${inputId}-error` : hint ? `${inputId}-hint` : undefined}
             className={cn(
-              "w-full h-12 bg-white border border-foreground/25 shadow-sm rounded-xl px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none transition-colors hover:border-foreground/45 focus:border-accent focus:ring-2 focus:ring-accent/20",
+              "w-full h-12 bg-white border border-foreground/25 shadow-xs rounded-xl px-4 text-sm text-foreground placeholder:text-muted-foreground/60 outline-hidden transition-colors hover:border-foreground/45 focus:border-accent focus:ring-2 focus:ring-accent/20",
               error && "border-destructive focus:border-destructive focus:ring-destructive/20",
               disabled && "opacity-60 cursor-not-allowed",
               leading && "ps-11",

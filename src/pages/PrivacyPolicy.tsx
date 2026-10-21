@@ -1,11 +1,11 @@
 export default function PrivacyPolicy() {
   return (
     <article className="max-w-3xl mx-auto px-6 pt-8 pb-32 text-right" dir="rtl">
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         حریم خصوصی کاربران در جامی مد
       </h1>
 
-      <div className="space-y-10 text-base md:text-lg leading-relaxed text-muted-foreground mb-16">
+      <div className="space-y-10 text-base md:text-lg leading-relaxed text-muted-foreground mb-16 md:leading-7">
 
         {/* Section 1 */}
         <section className="space-y-4">

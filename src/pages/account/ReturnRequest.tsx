@@ -166,7 +166,7 @@ export default function ReturnRequest() {
                 id="orderId"
                 value={selectedOrderId}
                 onChange={(e) => setSelectedOrderId(e.target.value)}
-                className="w-full h-11 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-full h-11 px-3 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-hidden focus:ring-1 focus:ring-ring"
                 required
               >
                 <option value="" disabled>سفارش مورد نظر را انتخاب کنید</option>
@@ -238,7 +238,7 @@ export default function ReturnRequest() {
                     <button
                       type="button"
                       onClick={() => removeFile(index)}
-                      className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute inset-0 bg-background/50 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <X className="w-5 h-5 text-foreground" />
                     </button>

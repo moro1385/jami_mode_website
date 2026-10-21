@@ -14,12 +14,12 @@ export default function FAQ() {
         description="پاسخ سوالات پرتکرار مشتریان جامی مد."
       />
       {/* Headline */}
-      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight">
+      <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-16 leading-tight md:leading-none">
         سوالات متداول
       </h1>
 
       {/* Accordion Content */}
-      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-24">
+      <div className="space-y-6 text-base md:text-lg leading-relaxed text-muted-foreground mb-24 md:leading-7">
         <Accordion type="single" collapsible className="w-full text-right" dir="rtl">
           <AccordionItem value="item-1">
             <AccordionTrigger className="text-right">چگونه می‌توانم سفارش خود را ثبت کنم؟</AccordionTrigger>

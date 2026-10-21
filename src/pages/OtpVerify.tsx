@@ -106,7 +106,7 @@ export default function OtpVerify() {
             placeholder="––––––"
             disabled={loading}
             aria-invalid={!!error}
-            className={`w-full h-14 bg-white border border-foreground/25 shadow-sm rounded-xl px-4 text-center text-2xl tracking-[0.5em] text-foreground outline-none transition-colors hover:border-foreground/45 focus:border-accent focus:ring-2 focus:ring-accent/20 ${
+            className={`w-full h-14 bg-white border border-foreground/25 shadow-xs rounded-xl px-4 text-center text-2xl tracking-[0.5em] text-foreground outline-hidden transition-colors hover:border-foreground/45 focus:border-accent focus:ring-2 focus:ring-accent/20 ${
               error ? "border-destructive focus:border-destructive focus:ring-destructive/20" : ""
             }`}
           />
@@ -116,7 +116,7 @@ export default function OtpVerify() {
         <button
           type="submit"
           disabled={loading || code.length !== 6}
-          className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-sm hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
+          className="w-full h-12 rounded-full bg-primary text-primary-foreground text-sm font-medium shadow-xs hover:opacity-90 transition-opacity disabled:opacity-60 flex items-center justify-center gap-2"
         >
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "تایید و ادامه"}
         </button>

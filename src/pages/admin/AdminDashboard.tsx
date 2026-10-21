@@ -55,7 +55,7 @@ export default function AdminDashboard() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-2xl border bg-card text-card-foreground shadow-sm p-6">
+          <div className="rounded-2xl border bg-card text-card-foreground shadow-xs p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="tracking-tight text-sm font-medium">کل محصولات</h3>
               <Package className="h-4 w-4 text-muted-foreground" />
@@ -63,7 +63,7 @@ export default function AdminDashboard() {
             <div className="text-2xl font-bold">{stats.products}</div>
           </div>
 
-          <div className="rounded-2xl border bg-card text-card-foreground shadow-sm p-6">
+          <div className="rounded-2xl border bg-card text-card-foreground shadow-xs p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="tracking-tight text-sm font-medium">کل سفارشات</h3>
               <ShoppingBag className="h-4 w-4 text-muted-foreground" />
@@ -71,7 +71,7 @@ export default function AdminDashboard() {
             <div className="text-2xl font-bold">{stats.orders}</div>
           </div>
 
-          <div className="rounded-2xl border bg-card text-card-foreground shadow-sm p-6">
+          <div className="rounded-2xl border bg-card text-card-foreground shadow-xs p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="tracking-tight text-sm font-medium">کاربران فعال</h3>
               <Users className="h-4 w-4 text-muted-foreground" />
@@ -79,7 +79,7 @@ export default function AdminDashboard() {
             <div className="text-2xl font-bold">{stats.users}</div>
           </div>
 
-          <div className="rounded-2xl border bg-card text-card-foreground shadow-sm p-6">
+          <div className="rounded-2xl border bg-card text-card-foreground shadow-xs p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="tracking-tight text-sm font-medium">درآمد کل</h3>
               <DollarSign className="h-4 w-4 text-muted-foreground" />

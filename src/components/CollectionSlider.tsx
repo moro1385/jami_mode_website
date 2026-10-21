@@ -59,7 +59,7 @@ export default function CollectionSlider() {
                       <p className="text-xl md:text-2xl text-primary-foreground/80 mb-4">
                         {collection.eyebrow}
                       </p>
-                      <h2 className="text-5xl md:text-7xl lg:text-8xl font-display font-black text-primary-foreground leading-none">
+                      <h2 className="text-5xl md:text-7xl lg:text-8xl font-display font-black text-primary-foreground leading-none lg:leading-none md:leading-none">
                         {collection.name}
                       </h2>
                       <p className="mt-5 max-w-xl text-sm md:text-base text-primary-foreground/85">
@@ -83,14 +83,14 @@ export default function CollectionSlider() {
         <button
           onClick={() => emblaApi?.scrollNext()}
           aria-label="Next collection"
-          className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 items-center justify-center bg-background/20 backdrop-blur-sm text-primary-foreground hover:bg-background/35 transition-colors"
+          className="hidden md:flex absolute left-6 top-1/2 -translate-y-1/2 w-11 h-11 items-center justify-center bg-background/20 backdrop-blur-xs text-primary-foreground hover:bg-background/35 transition-colors"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
         <button
           onClick={() => emblaApi?.scrollPrev()}
           aria-label="Previous collection"
-          className="hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 items-center justify-center bg-background/20 backdrop-blur-sm text-primary-foreground hover:bg-background/35 transition-colors"
+          className="hidden md:flex absolute right-6 top-1/2 -translate-y-1/2 w-11 h-11 items-center justify-center bg-background/20 backdrop-blur-xs text-primary-foreground hover:bg-background/35 transition-colors"
         >
           <ChevronRight className="w-5 h-5" />
         </button>

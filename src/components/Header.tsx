@@ -120,7 +120,7 @@ export default function Header() {
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         transparent
           ? "bg-transparent border-b border-transparent"
-          : "bg-white border-b border-border shadow-sm"
+          : "bg-white border-b border-border shadow-xs"
       )}
     >
 <div className="flex items-center justify-between px-6 h-[88px] md:h-[104px] max-w-7xl mx-auto">
@@ -141,7 +141,7 @@ export default function Header() {
           {/* نوشته جامی مد (با حفظ استایل‌های قبلی) */}
           <span 
             className={cn(
-              "text-xl md:text-4xl font-light uppercase tracking-[0.28em] transition-colors leading-none mt-1",
+              "text-xl md:text-4xl font-light uppercase tracking-[0.28em] transition-colors leading-none mt-1 md:leading-10",
               transparent ? "text-primary-foreground" : "text-foreground"
             )}
           >
@@ -245,7 +245,7 @@ export default function Header() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={cn(
-                "w-48 px-3 py-1.5 text-sm bg-transparent border-b outline-none transition-colors",
+                "w-48 px-3 py-1.5 text-sm bg-transparent border-b outline-hidden transition-colors",
                 transparent
                   ? "border-primary-foreground/30 text-primary-foreground placeholder:text-primary-foreground/50 focus:border-primary-foreground"
                   : "border-border text-foreground placeholder:text-muted-foreground focus:border-foreground"
@@ -323,7 +323,7 @@ export default function Header() {
               placeholder="جستجو..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-muted border border-border rounded-md text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground transition-colors"
+              className="w-full px-3 py-2 text-sm bg-muted border border-border rounded-md text-foreground placeholder:text-muted-foreground outline-hidden focus:border-foreground transition-colors"
             />
             <button type="submit" aria-label="Search" className="absolute left-3 top-1/2 -translate-y-1/2">
               <Search className="w-4 h-4 text-muted-foreground" />
