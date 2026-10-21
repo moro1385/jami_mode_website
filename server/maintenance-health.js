@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { isIP } from 'node:net';
 import { createClient } from '@supabase/supabase-js';
 import { maintenanceConfig, maintenanceFetch, maintenanceOptions, runMaintenance } from './maintenance-ops.js';
 
@@ -73,6 +74,14 @@ export function productionMaintenanceHealth(env = process.env) {
 
 export function maintenanceHealthRouter(health) {
   const router = Router();
+  // Only the caller's observed IP: no raw forwarding chain, tokens, logs or DB read.
+  // Shares the existing /api/health limiter and application trust-proxy setting.
+  router.get('/client-ip', (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    const ip = req.ip;
+    if (typeof ip !== 'string' || !isIP(ip)) return res.status(503).json({ status: 'unavailable' });
+    return res.status(200).json({ ip });
+  });
   router.get('/live', (_req, res) => res.set('Cache-Control', 'no-store').status(200).json({ status: 'ok' }));
   router.get('/maintenance', async (_req, res) => {
     let result;
