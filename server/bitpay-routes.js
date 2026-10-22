@@ -31,7 +31,12 @@ export function createPaymentRouter({ admin = adminClient, auth = authenticate, 
         .eq('id', req.params.id).eq('user_id', user.id).maybeSingle();
       if (error) throw new Error('Unavailable');
       if (!order || order.user_id !== user.id) return res.status(404).json({ error: 'Order not found' });
-      const paid = order.payment_method === 'gateway' && order.payment_state === 'paid' && nonempty(order.payment_trans_id);
+      let paid = order.payment_method === 'gateway' && order.payment_state === 'paid' && nonempty(order.payment_trans_id);
+      if (order.payment_method === 'wallet' && order.payment_state === 'paid') {
+        const proof = await admin().rpc('trusted_wallet_receipt', { p_order: order.id, p_user: user.id });
+        if (proof.error) throw new Error('Unavailable');
+        paid = proof.data === true;
+      }
       return res.status(200).json({ orderId: order.id, paid });
     } catch { return res.status(503).json({ error: 'Order status unavailable' }); }
   });
