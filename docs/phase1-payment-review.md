@@ -1,5 +1,8 @@
 # Payment recovery and reviewed resolution
 
+Wallet extension: the unpublished `20261022213205_phase1_wallet_readiness.sql` extends the same service-only routine/tool to durably referenced v2 topups. See `phase1-wallet-readiness.md`; the original gateway contract described below is preserved. No actual case has been applied by this change.
+
+
 Prepared locally on `security/phase1-payment-review`. No hosted migration,
 production financial action, provider request, commit, push or deployment is
 implied by this document. The new operator tool requires the accompanying

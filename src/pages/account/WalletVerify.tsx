@@ -33,21 +33,11 @@ export default function WalletVerify() {
           body: JSON.stringify({ topup_id, trans_id, id_get })
         });
         const data = await response.json();
-        const error = !response.ok ? new Error('Fetch error') : null;
-
-        if (error) {
-          navigate(`/account/wallet?topup=failed`, { replace: true });
-          return;
-        }
-
-        if (data?.success) {
-          navigate(`/account/wallet?topup=success`, { replace: true });
-        } else {
-          navigate(`/account/wallet?topup=failed`, { replace: true });
-        }
-      } catch (err) {
-        console.error("Verification network error:", err);
-        navigate(`/account/wallet?topup=failed`, { replace: true });
+        // A successful callback still leads to an independently checked receipt.
+        const state = response.ok && data?.reason === 'cancelled' ? 'cancelled' : 'pending';
+        navigate(`/account/wallet?topup=${state}&topupId=${encodeURIComponent(topup_id!)}`, { replace: true });
+      } catch {
+        navigate(`/account/wallet?topup=pending&topupId=${encodeURIComponent(topup_id!)}`, { replace: true });
       }
     }
 

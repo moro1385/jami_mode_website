@@ -108,14 +108,16 @@ export function createBitpayProvider({ environment, credentialEnvironment, apiKe
       if (!newPaymentsEnabled) fail('PAYMENTS_DISABLED');
       const { key, account, amount } = configuration(attempt);
       if (amount < 5000) fail('INVALID_RIAL_AMOUNT');
+      const wallet = attempt.topup_id != null;
       if (attempt.version !== 2 || attempt.state !== 'creating' || attempt.claimed !== true
-        || !opaqueReference(attempt.id) || !opaqueReference(attempt.order_id)) fail('INVALID_PAYMENT_CLAIM');
+        || !opaqueReference(attempt.id)
+        || (wallet ? (!opaqueReference(attempt.topup_id) || attempt.order_id != null) : !opaqueReference(attempt.order_id))) fail('INVALID_PAYMENT_CLAIM');
       let origin;
       try { origin = new URL(resolve(callbackOrigin)); } catch { fail('INVALID_CALLBACK_ORIGIN'); }
       if (origin.protocol !== 'https:' || origin.username || origin.password
         || origin.pathname !== '/' || origin.search || origin.hash) fail('INVALID_CALLBACK_ORIGIN');
-      const callback = new URL('/checkout/verify', origin);
-      callback.searchParams.set('order_id', attempt.order_id);
+      const callback = new URL(wallet ? '/account/wallet/verify' : '/checkout/verify', origin);
+      callback.searchParams.set(wallet ? 'topup_id' : 'order_id', wallet ? attempt.topup_id : attempt.order_id);
       // No invented provider idempotency field or automatic create retry.
       const fields = { api: key, amount: String(amount), redirect: callback.href };
       if (attempt.factorId != null) fields.factorId = factor(attempt.factorId);

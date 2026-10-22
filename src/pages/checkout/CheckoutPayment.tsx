@@ -1,11 +1,12 @@
 import { useState, useRef } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
-import { ChevronRight, CreditCard, Wallet, Loader2 } from "lucide-react";
+import { ChevronRight, CreditCard, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 import { useCheckoutStore } from "@/stores/checkoutStore";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import WalletCheckout from "@/components/checkout/WalletCheckout";
 
 export default function CheckoutPayment() {
   const navigate = useNavigate();
@@ -29,7 +30,6 @@ export default function CheckoutPayment() {
 
   const subtotal = items.reduce((sum, i) => sum + parseFloat(i.price.amount) * i.quantity, 0);
   const finalTotal = quote?.total ?? subtotal + shippingCost;
-  const walletBalance = user?.wallet.balance ?? 0;
 
   const handleGatewayOrder = async () => {
     if (!user || busy) return;
@@ -137,23 +137,8 @@ export default function CheckoutPayment() {
             <h2 className="text-lg font-medium text-foreground mb-6">روش پرداخت</h2>
 
             <div className="space-y-4">
-              {/* Wallet Option */}
-              <div className="border border-border bg-muted/30 p-6 rounded-2xl">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Wallet className="w-5 h-5" />
-                    <span className="font-medium">پرداخت از کیف پول</span>
-                  </div>
-                  <span className="text-sm">
-                    موجودی: {new Intl.NumberFormat('fa-IR').format(walletBalance)} ریال
-                  </span>
-                </div>
-
-                <p role="status" className="text-sm text-muted-foreground mb-4">پرداخت از کیف پول موقتاً در دسترس نیست.</p>
-                <button disabled className="w-full h-12 bg-muted text-muted-foreground rounded-full">
-                  پرداخت از کیف پول (موقتاً غیرفعال)
-                </button>
-              </div>
+              <WalletCheckout key={user?.id} selection={{ addressId: selectedAddress.id, shippingOption: shippingMethod,
+                items: items.map(item => ({ productId: item.productId, quantity: item.quantity, size: item.selectedSize, color: item.selectedColor })) }} />
 
               {quote && <p role="status">مبلغ نهایی سرور: {new Intl.NumberFormat('fa-IR').format(quote.total)} ریال. برای تایید این مبلغ و پرداخت دوباره کلیک کنید.</p>}
               {/* Gateway Option */}

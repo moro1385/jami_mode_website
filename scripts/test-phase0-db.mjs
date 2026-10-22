@@ -110,6 +110,21 @@ try {
   process.stdout.write(psql('-f', 'supabase/tests/wallet_ledger.sql'));
   const { runWalletLedgerRaces } = await import('./wallet-ledger-races.mjs');
   await runWalletLedgerRaces({ psql, interactive });
+  psql('-f', 'supabase/migrations/20261022205522_phase1_wallet_topups.sql');
+  process.stdout.write(psql('-f', 'ops/validate-wallet-topups.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/wallet_topups.sql'));
+  const { runWalletTopupRaces } = await import('./wallet-topup-races.mjs');
+  await runWalletTopupRaces({ psql, interactive });
+  psql('-f', 'supabase/migrations/20261022211146_phase1_wallet_interface.sql');
+  process.stdout.write(psql('-f', 'supabase/tests/wallet_view.sql'));
+  psql('-f', 'supabase/migrations/20261022213205_phase1_wallet_readiness.sql');
+  process.stdout.write(psql('-f', 'supabase/tests/payment_review.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/wallet_readiness.sql'));
+  const { runWalletReadyRaces } = await import('./wallet-ready-races.mjs');
+  await runWalletReadyRaces({ psql, interactive });
+  process.stdout.write(psql('-f', 'ops/validate-wallet-readiness.sql'));
+  const { runWalletHttpAcceptance } = await import('./wallet-http-acceptance.mjs');
+  await runWalletHttpAcceptance({ psql });
   console.log('Phase 0 follow-up database assertions passed (local disposable PostgreSQL; synthetic Auth/Storage).');
 } catch (error) {
   failed = true;

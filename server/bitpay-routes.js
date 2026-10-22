@@ -1,4 +1,5 @@
 ﻿import { Router } from 'express';
+import { mountWalletTopups } from './wallet-topups.js';
 import { createClient } from '@supabase/supabase-js';
 import { bitpayProvider, legacyBitpayProvider, integerRial } from './bitpay-provider.js';
 
@@ -17,7 +18,8 @@ const authenticate = async header => {
 
 export function createPaymentRouter({ admin = adminClient, auth = authenticate, legacy = legacyBitpayProvider, provider = bitpayProvider,
   merchant = () => process.env.BITPAY_MERCHANT_ACCOUNT,
-  recoveryEnabled = process.env.PAYMENT_RECOVERY_ENABLED === 'true' } = {}) {
+  recoveryEnabled = process.env.PAYMENT_RECOVERY_ENABLED === 'true',
+  topupsEnabled = process.env.JAMI_WALLET_TOPUPS_ENABLED === 'true' } = {}) {
   const router = Router();
   const enabled = provider?.newPaymentsEnabled === true;
   router.get('/orders/:id/status', async (req, res) => {
@@ -96,7 +98,7 @@ export function createPaymentRouter({ admin = adminClient, auth = authenticate, 
       return res.status(409).json({ error: 'Payment initiation unresolved; check order status or contact support', code: 'PAYMENT_AMBIGUOUS' });
     }
   });
-  router.post('/wallet-init', (_req, res) => res.status(503).json({ error: 'Wallet top-ups are temporarily unavailable', code: 'WALLET_TOPUPS_DISABLED' }));
+  mountWalletTopups(router, { admin, auth, provider, merchant, topupsEnabled });
   for (const [path, wallet] of [['/verify', false], ['/wallet-verify', true]]) {
     router.post(path, async (req, res) => {
       try {
@@ -112,17 +114,28 @@ export function createPaymentRouter({ admin = adminClient, auth = authenticate, 
         // returns an inconsistent row. Callback values never override it.
         if (attempt.provider_ref !== id_get || attempt.merchant !== merchant()
           || (attempt.transaction_id != null && trans_id && trans_id !== '0' && attempt.transaction_id !== trans_id)) throw new Error('Callback binding mismatch');
+        let walletOwner;
+        if (wallet && attempt.version === 2) {
+          if (attempt.topup_id !== topup_id || attempt.order_id != null) throw new Error('Topup binding mismatch');
+          walletOwner = await auth(req.headers?.authorization);
+          if (!walletOwner) return res.status(401).json({ success: false, reason: 'verification_pending' });
+          // Check ownership before even replaying a settled receipt. New wallet
+          // verification always uses durable evidence, regardless of the order switch.
+          const receipt = await rpc(client, 'trusted_wallet_topup_status', { p_user: walletOwner.id, p_topup: topup_id });
+          if (receipt.topupId !== topup_id) throw new Error('Topup owner mismatch');
+          if (attempt.state === 'settled') return res.status(200).json({ success: receipt.paid === true && nonempty(attempt.transaction_id) && trans_id === attempt.transaction_id });
+        }
         if (attempt.state === 'settled') return res.status(200).json({ success: nonempty(attempt.transaction_id) && trans_id === attempt.transaction_id });
         // Browser cancellation is advisory; never mutate financial state.
         if (!trans_id || trans_id === '0') return res.status(200).json({ success: false, reason: 'cancelled' });
         const adapter = attempt.version === 1 ? legacy : provider;
         if (!adapter || (attempt.version !== 1 && !enabled)) return res.status(503).json({ success: false, reason: 'provider_contract_required' });
         // Preserve legacy callback transport; legacy recovery needs its own authenticated design.
-        const recover = recoveryEnabled && attempt.version === 2;
+        const recover = (recoveryEnabled || wallet) && attempt.version === 2;
         let verified;
         if (recover) {
           // A public callback must not poison the durable claim with a forged transaction.
-          const customer = await auth(req.headers?.authorization);
+          const customer = walletOwner ?? await auth(req.headers?.authorization);
           if (!customer) return res.status(401).json({ success: false, reason: 'verification_pending' });
           const claim = await rpc(client, 'trusted_verification_claim', { p_attempt: attempt.id, p_transaction: trans_id, p_user: customer.id });
           if (claim.state === 'verified') verified = claim.evidence;

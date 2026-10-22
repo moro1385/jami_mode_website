@@ -52,7 +52,7 @@ describe("logged-out payment returns", () => {
     fireEvent.submit(document.querySelector("form")!);
     await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     expect(fetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({ body: JSON.stringify({ [key]: "legacy&id", trans_id: "trans/1", id_get: "ref+1" }) }));
-    await waitFor(() => expect(screen.getByRole("status").textContent).toContain(path.startsWith("/checkout") ? "/checkout/failed" : "topup=failed"));
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain(path.startsWith("/checkout") ? "/checkout/failed" : "topup=pending"));
   });
   it("preserves callback across OTP selection, request and verification", async () => {
     const callback = "/checkout/verify?order_id=old&id_get=ref&trans_id=trans";

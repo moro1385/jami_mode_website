@@ -32,7 +32,7 @@ beforeEach(() => {
     if (table === "order_items") return { insert: mocks.itemInsert };
     throw new Error(`Forbidden client financial access: ${table}`);
   });
-  mocks.getSession.mockResolvedValue({ data: { session: { access_token: "synthetic-token" } } });
+  mocks.getSession.mockResolvedValue({ data: { session: { access_token: "synthetic-token", user: { id: "customer" } } } });
   useCartStore.setState({ items: [{ id: "cart-line", productId: "catalog-product", productTitle: "Test product", productHandle: "test", image: "", price: { amount: "1000", currencyCode: "IRR" }, quantity: 1, selectedSize: null, selectedColor: null }] });
   useCheckoutStore.setState({ selectedAddress: { id: "address", label: "Home", recipient: "Customer", phone: "09110000001", country: "Iran", city: "Tehran", line1: "Test street", postalCode: "0000000000", isDefault: true }, shippingMethod: "post", shippingCost: 100 });
 });
@@ -49,13 +49,15 @@ describe("customer financial UI containment", () => {
     expect(fetch).not.toHaveBeenCalled();
     expect(useCartStore.getState().items).toHaveLength(1);
   });
-  it("offers no new top-up input or purchase action", () => {
+  it("offers no top-up action while server activation is disabled", async () => {
+    vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ balance: 5000, currency: "IRR", entries: [], pendingTopups: [], hasMore: false, topupsEnabled: false, spendingEnabled: false }) } as Response);
     render(<MemoryRouter><Wallet /></MemoryRouter>);
-    expect(screen.getByRole("status")).toHaveTextContent("غیرفعال");
+    expect(await screen.findByText("شارژ جدید کیف پول موقتاً غیرفعال است.")).toBeInTheDocument();
+    await waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("spinbutton")).toBeNull();
     expect(screen.queryByRole("button", { name: /شارژ/ })).toBeNull();
     expect(mocks.from).not.toHaveBeenCalled();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledWith("/api/wallet/summary", expect.objectContaining({ method: "GET", cache: "no-store" }));
   });
   it("requests a trusted quote without direct financial writes and retains cart on failure", async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: false, json: async () => ({ error: "mock gateway unavailable" }) } as Response);
@@ -94,7 +96,7 @@ describe("customer financial UI containment", () => {
   it("preserves the browser verification route for previously initiated topups", async () => {
     vi.mocked(fetch).mockResolvedValue({ ok: true, json: async () => ({ success: true }) } as Response);
     render(<MemoryRouter initialEntries={["/account/wallet/verify?topup_id=old-topup&id_get=old-ref&trans_id=old-trans"]}><WalletVerify /></MemoryRouter>);
-    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/account/wallet?topup=success", { replace: true }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("/account/wallet?topup=pending&topupId=old-topup", { replace: true }));
     expect(fetch).toHaveBeenCalledWith("/api/bitpay/wallet-verify", expect.objectContaining({ body: JSON.stringify({ topup_id: "old-topup", trans_id: "old-trans", id_get: "old-ref" }) }));
   });
 });
