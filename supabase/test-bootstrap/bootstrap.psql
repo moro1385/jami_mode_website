@@ -33,5 +33,6 @@ COMMIT;
 \ir migrations/20261019075417_phase0_reservation_expiry.sql
 \ir migrations/20261019142741_phase0_maintenance_operations.sql
 \ir migrations/20261019183421_phase0_log_retention.sql
+\ir migrations/20261022072115_phase1_payment_review.sql
 \ir fixes.sql
 NOTIFY pgrst, 'reload schema';
