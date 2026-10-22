@@ -100,6 +100,11 @@ try {
     maintainer.child.stdin.end('ROLLBACK;'); await maintainer.done;
   } finally { maintainer.child.kill(); }
   console.log('PASS: overlapping maintenance skips without mutation or duplicate run log.');
+  psql('-f', 'supabase/migrations/20261022072115_phase1_payment_review.sql');
+  process.stdout.write(psql('-f', 'ops/validate-payment-review.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/payment_review.sql'));
+  const { runPaymentReviewRaces } = await import('./payment-review-races.mjs');
+  await runPaymentReviewRaces({ psql, interactive });
   console.log('Phase 0 follow-up database assertions passed (local disposable PostgreSQL; synthetic Auth/Storage).');
 } catch (error) {
   failed = true;

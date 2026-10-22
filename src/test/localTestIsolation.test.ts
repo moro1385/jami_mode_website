@@ -9,7 +9,7 @@ const publicEnv = { MODE: 'local-test', VITE_SUPABASE_URL: TEST_ORIGIN, VITE_SUP
 const backendEnv = { JAMI_TEST_SUPABASE_URL: TEST_ORIGIN, JAMI_TEST_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic', JAMI_TEST_SUPABASE_SECRET_KEY: 'sb_secret_synthetic' };
 describe('isolated fresh test bootstrap', () => {
   it('covers all originals exactly once, checks hashes and dependency order', () => {
-    expect(validateBootstrap().migrations).toHaveLength(27);
+    expect(validateBootstrap().migrations).toHaveLength(28);
   });
   it('contains no synthetic Auth replacement or hostile fixture imports', () => {
     const script = readFileSync('supabase/test-bootstrap/bootstrap.psql', 'utf8');
