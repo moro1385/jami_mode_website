@@ -73,6 +73,12 @@ describe("pending signup compatibility", () => {
     expect(db.update).toHaveBeenCalled();
     expect(sessionStorage.getItem("jamimode-pending-signup")).toBeNull();
   });
+  it("saves names when Supabase returns the confirmed Iranian phone without plus", async () => {
+    await completePendingSignup({ id: "customer", phone: "989110000001" });
+    expect(db.update).toHaveBeenCalledWith({ first_name: "First", last_name: "Last", phone: "989110000001" });
+    expect(db.eq).toHaveBeenCalledWith("id", "customer");
+    expect(sessionStorage.getItem("jamimode-pending-signup")).toBeNull();
+  });
   it("retains pending names on a database failure for retry", async () => {
     db.maybeSingle.mockResolvedValueOnce({ data: null, error: { code: "42501" } });
     await expect(completePendingSignup({ id: "customer", phone: "+989110000001" })).rejects.toEqual({ code: "42501" });

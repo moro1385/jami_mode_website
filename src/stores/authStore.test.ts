@@ -30,7 +30,12 @@ describe("auth store compatibility", () => {
       return { data: { user: { id: "new" }, session: null }, error: null };
     });
     await useAuthStore.getState().signUp({ phone: "09110000001", firstName: "New", lastName: "Name", password: "synthetic-password" });
-    expect(mocks.signUp).toHaveBeenCalledWith({ phone: "+989110000001", password: "synthetic-password" });
+    expect(mocks.signUp).toHaveBeenCalledWith({ phone: "+989110000001", password: "synthetic-password", options: { data: { first_name: "New", last_name: "Name" } } });
+  });
+  it("persists signup names with Auth before any authenticated profile save is possible", async () => {
+    mocks.signUp.mockResolvedValue({ data: { user: { id: "new" }, session: null }, error: null });
+    await useAuthStore.getState().signUp({ phone: "09110000001", firstName: "New", lastName: "Name", password: "synthetic-password" });
+    expect(mocks.signUp).toHaveBeenCalledWith({ phone: "+989110000001", password: "synthetic-password", options: { data: { first_name: "New", last_name: "Name" } } });
   });
   it("clears its pending names on signup rejection", async () => {
     mocks.signUp.mockResolvedValue({ data: {}, error: { message: "signup denied" } });

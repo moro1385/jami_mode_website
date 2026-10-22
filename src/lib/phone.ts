@@ -13,6 +13,8 @@ export function normalizePhone(input: string): string {
   if (value.startsWith("00")) value = `+${value.slice(2)}`;
   if (/^09\d{9}$/.test(value)) return `+98${value.slice(1)}`;
   if (/^9\d{9}$/.test(value)) return `+98${value}`;
+  // Supabase Auth returns Iranian phone numbers as 989... without a plus.
+  if (/^989\d{9}$/.test(value)) return `+${value}`;
   return value;
 }
 
