@@ -29,7 +29,7 @@ BEGIN
 END $$;
 SELECT pg_temp.make_review_case(1);
 SELECT public.test_assert((pg_temp.review_case(1)->>'outcome')='eligible','review plan identifies eligible case');
-SELECT public.test_assert((SELECT count(*)=0 FROM checkout_private.payment_reviews),'plan creates no audit');
+SELECT public.test_assert((SELECT count(*)=0 FROM checkout_private.payment_reviews r JOIN review_cases c USING(attempt_id)),'plan creates no audit');
 SELECT public.test_assert(NOT EXISTS(SELECT 1 FROM checkout_private.verifications v JOIN review_cases c USING(attempt_id)),'plan creates no evidence');
 SELECT public.test_assert((SELECT payment_state='pending' FROM public.orders WHERE id=(SELECT order_id FROM review_cases WHERE n=1)),'plan leaves order pending');
 
@@ -52,7 +52,7 @@ SELECT public.test_reject($q$SELECT pg_temp.review_case(1,true,'{"hash":null}')$
 SELECT public.test_reject($q$SELECT pg_temp.review_case(1,true,'{"reviewer":null}')$q$,'review requires accountable reviewer label');
 SELECT public.test_reject($q$SELECT pg_temp.review_case(1,true,jsonb_build_object('at',now()-interval '2 days'))$q$,'stale review rejected');
 SELECT public.test_reject($q$SELECT pg_temp.review_case(1,true,jsonb_build_object('at',now()+interval '1 day'))$q$,'future review rejected');
-SELECT public.test_assert((SELECT count(*)=0 FROM checkout_private.payment_reviews),'invalid reviews create no audit');
+SELECT public.test_assert((SELECT count(*)=0 FROM checkout_private.payment_reviews r JOIN review_cases c USING(attempt_id)),'invalid reviews create no audit');
 
 GRANT SELECT ON review_cases TO service_role;
 DO $$ BEGIN EXECUTE format('GRANT USAGE ON SCHEMA %I TO service_role',pg_my_temp_schema()::regnamespace); END $$;
@@ -60,7 +60,7 @@ SET ROLE service_role;
 SELECT public.test_assert((pg_temp.review_case(1,true)->>'outcome')='settled','service-only operator review settles valid order');
 SELECT public.test_assert((pg_temp.review_case(1,true)->>'outcome')='already_settled','review retry is idempotent');
 RESET ROLE;
-SELECT public.test_assert((SELECT count(*)=1 FROM checkout_private.payment_reviews),'one immutable operator review');
+SELECT public.test_assert((SELECT count(*)=1 FROM checkout_private.payment_reviews r JOIN review_cases c USING(attempt_id)),'one immutable operator review');
 SELECT public.test_assert((SELECT count(*)=1 FROM checkout_private.outbox b JOIN review_cases c ON c.attempt_id=b.attempt_id),'one settlement event');
 SELECT public.test_assert((SELECT count(*)=1 FROM checkout_private.verifications v JOIN review_cases c USING(attempt_id) WHERE state='verified'),'review retains durable verification evidence');
 SELECT public.test_reject($q$SELECT pg_temp.review_case(1,true,'{"hash":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}')$q$,'review cannot overwrite prior attestation');

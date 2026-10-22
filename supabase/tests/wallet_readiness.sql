@@ -1,0 +1,82 @@
+\set ON_ERROR_STOP on
+BEGIN;
+CREATE FUNCTION pg_temp.assert(v boolean,message text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN IF v IS NOT TRUE THEN RAISE EXCEPTION '%',message;END IF;END $$;
+CREATE FUNCTION pg_temp.reject(command text) RETURNS void LANGUAGE plpgsql AS $$ BEGIN BEGIN EXECUTE command;EXCEPTION WHEN OTHERS THEN RETURN;END;RAISE EXCEPTION 'Unexpectedly accepted: %',command;END $$;
+SELECT pg_temp.assert((SELECT count(*)=0 FROM checkout_private.wallet_zero_origins),'installation must not backfill origins');
+INSERT INTO auth.users(id,created_at) VALUES('71000000-0000-4000-8000-000000000001',now()),('71000000-0000-4000-8000-000000000002','2020-01-01'),('71000000-0000-4000-8000-000000000003',now()),('71000000-0000-4000-8000-000000000004',now());
+SELECT pg_temp.assert(NOT checkout_private.wallet_prepare_zero('71000000-0000-4000-8000-000000000002'),'old Auth account is not automatically trusted');
+INSERT INTO checkout_private.wallet_accounts(user_id,opening_balance,balance) VALUES('71000000-0000-4000-8000-000000000003',10000,10000);
+UPDATE public.profiles SET wallet_balance=10000 WHERE id='71000000-0000-4000-8000-000000000003';
+SELECT pg_temp.assert(NOT checkout_private.wallet_prepare_zero('71000000-0000-4000-8000-000000000003'),'positive imported balance needs operator review');
+INSERT INTO public.wallet_topups(user_id,amount) VALUES('71000000-0000-4000-8000-000000000004',5000);
+SELECT pg_temp.assert(NOT checkout_private.wallet_prepare_zero('71000000-0000-4000-8000-000000000004'),'existing payment history blocks automatic zero provenance');
+SELECT pg_temp.assert(checkout_private.wallet_zero_candidate('71000000-0000-4000-8000-000000000001') IS NOT NULL,'genuine prospective identity qualifies');
+SELECT pg_temp.assert(NOT EXISTS(SELECT 1 FROM checkout_private.wallet_accounts WHERE user_id='71000000-0000-4000-8000-000000000001'),'candidate view creates no account');
+UPDATE checkout_private.wallet_control SET topups_enabled=true,spending_enabled=true;
+SELECT pg_temp.assert((public.trusted_wallet_view('71000000-0000-4000-8000-000000000001')->>'topupsEnabled')::boolean,'fresh candidate can start its first topup');
+SELECT pg_temp.assert(NOT (public.trusted_wallet_view('71000000-0000-4000-8000-000000000002')->>'topupsEnabled')::boolean,'old unreviewed zero cannot start topups');
+SELECT pg_temp.reject($q$SELECT public.trusted_wallet_topup_claim('71000000-0000-4000-8000-000000000002',gen_random_uuid(),5000,'readiness')$q$);
+CREATE TEMP TABLE ready_cases(n int PRIMARY KEY,a jsonb);
+INSERT INTO ready_cases VALUES(1,public.trusted_wallet_topup_claim('71000000-0000-4000-8000-000000000001','71000000-0000-4000-8000-000000000005',60000,'readiness'));
+SELECT pg_temp.assert((SELECT count(*)=1 FROM checkout_private.wallet_zero_origins WHERE user_id='71000000-0000-4000-8000-000000000001'),'first claim records one immutable zero origin');
+SELECT pg_temp.assert((public.trusted_wallet_reconcile('71000000-0000-4000-8000-000000000001')->>'reviewed')::boolean,'origin authorizes reviewed zero opening');
+SELECT pg_temp.assert(NOT EXISTS(SELECT 1 FROM checkout_private.wallet_opening_reviews WHERE user_id='71000000-0000-4000-8000-000000000001'),'no invented operator attestation');
+SELECT pg_temp.reject('UPDATE checkout_private.wallet_zero_origins SET source=source');
+SELECT pg_temp.reject('DELETE FROM checkout_private.wallet_zero_policy');
+-- A creating attempt with no persisted reference cannot be reconstructed from guesswork.
+CREATE FUNCTION pg_temp.review_topup(n int,apply boolean DEFAULT false,patch jsonb DEFAULT '{}') RETURNS jsonb LANGUAGE plpgsql AS $$
+DECLARE a checkout_private.attempts;j jsonb;
+BEGIN
+ SELECT t.* INTO STRICT a FROM checkout_private.attempts t JOIN ready_cases c ON (c.a->>'id')::uuid=t.id WHERE c.n=review_topup.n;
+ j:=jsonb_build_object('amount',a.amount,'merchant',a.merchant,'ref',coalesce(a.provider_ref,'976001'),'transaction','97610'||n::text,'hash',repeat('f',64),'source','provider_support','at',now())||patch;
+ RETURN public.trusted_review_payment(a.id,(j->>'amount')::bigint,j->>'merchant',j->>'ref',j->>'transaction',j->>'hash',j->>'source','topup-case','fixture-reviewer',(j->>'at')::timestamptz,apply);
+END $$;
+SELECT pg_temp.reject('SELECT pg_temp.review_topup(1,true)');
+SELECT public.trusted_wallet_topup_attach((SELECT (a->>'id')::uuid FROM ready_cases WHERE n=1),'71000000-0000-4000-8000-000000000001','976001','readiness');
+SELECT public.trusted_verification_claim((SELECT (a->>'id')::uuid FROM ready_cases WHERE n=1),'976101','71000000-0000-4000-8000-000000000001');
+SELECT pg_temp.assert(pg_temp.review_topup(1)->>'outcome'='eligible','independent review plan covers ambiguous topups');
+SELECT pg_temp.assert(NOT EXISTS(SELECT 1 FROM checkout_private.payment_reviews WHERE attempt_id=(SELECT (a->>'id')::uuid FROM ready_cases WHERE n=1)),'plan is non-mutating');
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"amount":1}')$q$);
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"merchant":"wrong"}')$q$);
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"ref":"976002"}')$q$);
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"transaction":"976102"}')$q$);
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"source":"callback"}')$q$);
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"hash":null}')$q$);
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,jsonb_build_object('at',now()-interval '2 days'))$q$);
+CREATE FUNCTION pg_temp.fail_readiness_event() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'Synthetic late failure';END $$;
+CREATE TRIGGER readiness_failure BEFORE INSERT ON checkout_private.outbox FOR EACH ROW EXECUTE FUNCTION pg_temp.fail_readiness_event();
+SELECT pg_temp.reject('SELECT pg_temp.review_topup(1,true)');
+DROP TRIGGER readiness_failure ON checkout_private.outbox;
+SELECT pg_temp.assert((SELECT wallet_balance=0 FROM public.profiles WHERE id='71000000-0000-4000-8000-000000000001') AND NOT EXISTS(SELECT 1 FROM checkout_private.payment_reviews WHERE attempt_id=(SELECT (a->>'id')::uuid FROM ready_cases WHERE n=1)),'audit and credit roll back together on failure');
+SELECT pg_temp.assert((SELECT state='verifying' FROM checkout_private.verifications WHERE attempt_id=(SELECT (a->>'id')::uuid FROM ready_cases WHERE n=1)),'failed review does not manufacture verified evidence');
+SELECT pg_temp.assert(pg_temp.review_topup(1,true)->>'outcome'='settled','valid independently reviewed topup settles');
+SELECT pg_temp.assert(pg_temp.review_topup(1,true)->>'outcome'='already_settled','identical topup review retry credits once');
+SELECT pg_temp.reject($q$SELECT pg_temp.review_topup(1,true,'{"hash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}')$q$);
+SELECT pg_temp.assert((SELECT wallet_balance=60000 FROM public.profiles WHERE id='71000000-0000-4000-8000-000000000001') AND (SELECT count(*)=1 FROM checkout_private.wallet_entries WHERE user_id='71000000-0000-4000-8000-000000000001'),'one review, one exact credit');
+SELECT pg_temp.assert((public.trusted_wallet_view('71000000-0000-4000-8000-000000000001')->>'spendingEnabled')::boolean,'credited prospective account can spend only with gates enabled');
+-- Real existing checkout: quote, confirm, receipt, repeat and exact remaining balance.
+INSERT INTO public.products(id,name,slug,price,is_active,is_out_of_stock,sizes,colors) VALUES('71000000-0000-4000-8000-000000000006','Readiness fixture','readiness-fixture',20000,true,false,'{}','{}');
+INSERT INTO public.addresses(id,user_id,line1) VALUES('71000000-0000-4000-8000-000000000007','71000000-0000-4000-8000-000000000001','Synthetic');
+DO $$ DECLARE sel jsonb;q jsonb;r jsonb;k uuid:=gen_random_uuid();BEGIN
+ sel:='{"addressId":"71000000-0000-4000-8000-000000000007","shippingOption":"tipax","items":[{"productId":"71000000-0000-4000-8000-000000000006","quantity":1}]}';
+ q:=public.trusted_wallet_checkout('71000000-0000-4000-8000-000000000001',k,sel,NULL);
+ r:=public.trusted_wallet_checkout('71000000-0000-4000-8000-000000000001',k,sel,q->>'quote');
+ PERFORM pg_temp.assert(public.trusted_wallet_receipt((r->>'orderId')::uuid,'71000000-0000-4000-8000-000000000001'),'owned purchase receipt');
+ r:=public.trusted_wallet_checkout('71000000-0000-4000-8000-000000000001',k,sel,q->>'quote');PERFORM pg_temp.assert((r->>'alreadyPaid')::boolean,'retry debit once');
+END $$;
+SELECT pg_temp.assert((SELECT wallet_balance=40000 FROM public.profiles WHERE id='71000000-0000-4000-8000-000000000001'),'exact balance after reviewed topup and purchase');
+INSERT INTO ready_cases VALUES(2,public.trusted_wallet_topup_claim('71000000-0000-4000-8000-000000000001',gen_random_uuid(),10000,'readiness'));
+SELECT public.trusted_wallet_topup_attach((SELECT (a->>'id')::uuid FROM ready_cases WHERE n=2),'71000000-0000-4000-8000-000000000001','976002','readiness');
+SELECT pg_temp.reject($q$SELECT public.trusted_verification_claim((SELECT (a->>'id')::uuid FROM ready_cases WHERE n=2),'976101','71000000-0000-4000-8000-000000000001')$q$);
+SELECT pg_temp.assert(NOT has_function_privilege('authenticated','checkout_private.wallet_prepare_zero(uuid)','EXECUTE') AND NOT has_function_privilege('anon','checkout_private.wallet_zero_candidate(uuid)','EXECUTE'),'browser cannot issue zero provenance');
+SELECT pg_temp.assert(NOT has_table_privilege('service_role','checkout_private.wallet_zero_origins','INSERT') AND NOT has_table_privilege('service_role','checkout_private.wallet_zero_policy','UPDATE'),'server cannot forge policy or origin rows directly');
+GRANT SELECT ON ready_cases TO service_role;
+DO $$ BEGIN EXECUTE format('GRANT USAGE ON SCHEMA %I TO service_role',pg_my_temp_schema()::regnamespace);END $$;
+SET ROLE service_role;
+SELECT pg_temp.assert(checkout_private.wallet_prepare_zero('71000000-0000-4000-8000-000000000001'),'origin replay works without direct Auth SELECT grant');
+SELECT pg_temp.assert(pg_temp.review_topup(1,true)->>'outcome'='already_settled','service-only exact review replay');
+SELECT pg_temp.assert(pg_temp.review_topup(2,true)->>'outcome'='settled','service-only first topup review apply');
+RESET ROLE;
+SELECT pg_temp.assert((SELECT wallet_balance=50000 FROM public.profiles WHERE id='71000000-0000-4000-8000-000000000001'),'second reviewed credit exact');
+ROLLBACK;
+\echo PASS: prospective zero proof, historical containment, independent topup review, atomic failure and complete wallet purchase.

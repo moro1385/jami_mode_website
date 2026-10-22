@@ -35,5 +35,8 @@ COMMIT;
 \ir migrations/20261019183421_phase0_log_retention.sql
 \ir migrations/20261022072115_phase1_payment_review.sql
 \ir migrations/20261022085357_phase1_wallet_ledger.sql
+\ir migrations/20261022205522_phase1_wallet_topups.sql
+\ir migrations/20261022211146_phase1_wallet_interface.sql
+\ir migrations/20261022213205_phase1_wallet_readiness.sql
 \ir fixes.sql
 NOTIFY pgrst, 'reload schema';

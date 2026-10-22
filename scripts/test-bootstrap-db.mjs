@@ -47,8 +47,12 @@ try {
   psql('-c', "INSERT INTO auth.users(id,phone) VALUES('10000000-0000-0000-0000-000000000999','+12025550101')" );
   process.stdout.write(psql('-f', 'ops/test-phase0-maintenance.sql'));
   psql('-c', "DELETE FROM auth.users WHERE id='10000000-0000-0000-0000-000000000999'" );
+  process.stdout.write(psql('-f', 'ops/validate-wallet-topups.sql'));
   process.stdout.write(psql('-f', 'supabase/test-bootstrap/validation/assertions.sql'));
   process.stdout.write(psql('-f', 'supabase/tests/log_retention.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/wallet_view.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/wallet_readiness.sql'));
+  process.stdout.write(psql('-f', 'ops/validate-wallet-readiness.sql'));
 } catch (error) {
   failed = true;
   const log = join(directory, 'postgres.log');

@@ -204,6 +204,27 @@
       "sourceSha256": "9b498442fb62c3d1923f1090b6fa4a053f5cd2435673ad69be5e6cb33063fc23",
       "bootstrapSha256": "9b498442fb62c3d1923f1090b6fa4a053f5cd2435673ad69be5e6cb33063fc23",
       "correction": null
+    },
+    {
+      "order": 30,
+      "filename": "20261022205522_phase1_wallet_topups.sql",
+      "sourceSha256": "6d7283bcad562af6316feefd5fb1e62cad450fd4a007fa0ed3486c4ceb7b755d",
+      "bootstrapSha256": "6d7283bcad562af6316feefd5fb1e62cad450fd4a007fa0ed3486c4ceb7b755d",
+      "correction": null
+    },
+    {
+      "order": 31,
+      "filename": "20261022211146_phase1_wallet_interface.sql",
+      "sourceSha256": "7e31b1edaaa0280728c1b48b8b26dbad93853a07927c51ee62d1c266b0a37ed5",
+      "bootstrapSha256": "7e31b1edaaa0280728c1b48b8b26dbad93853a07927c51ee62d1c266b0a37ed5",
+      "correction": null
+    },
+    {
+      "order": 32,
+      "filename": "20261022213205_phase1_wallet_readiness.sql",
+      "sourceSha256": "7127bcb68d47e39442868039f5f0bc942e8d703aaf636b37dafc0da8ce121fde",
+      "bootstrapSha256": "7127bcb68d47e39442868039f5f0bc942e8d703aaf636b37dafc0da8ce121fde",
+      "correction": null
     }
   ],
   "preflight": {
