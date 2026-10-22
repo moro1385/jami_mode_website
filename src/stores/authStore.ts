@@ -262,7 +262,8 @@ export const useAuthStore = create<AuthStore>()(
           sessionStorage.setItem("jamimode-pending-signup", pendingSignup);
           const { data, error } = await supabase.auth.signUp({
             phone: normalized,
-            password: input.password
+            password: input.password,
+            options: { data: { first_name: input.firstName, last_name: input.lastName } },
           }).catch((error) => {
             if (sessionStorage.getItem("jamimode-pending-signup") === pendingSignup) sessionStorage.removeItem("jamimode-pending-signup");
             throw error;
