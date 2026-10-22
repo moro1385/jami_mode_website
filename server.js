@@ -3,6 +3,7 @@ import { productionMaintenanceHealth, maintenanceHealthRouter, startMaintenanceW
 import path from "path";
 import { fileURLToPath } from "url";
 import bitpayRoutes from "./server/bitpay-routes.js";
+import walletRoutes from "./server/wallet-routes.js";
 import { securityHeaders, createRateLimiter, trustedProxyHops } from './server/http-security.js';
 import torobRoutes from "./server/torob-routes.js";
 
@@ -11,13 +12,14 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', trustedProxyHops(process.env.JAMI_TRUST_PROXY_HOPS));
 app.use(securityHeaders);
-app.use('/api/bitpay', createRateLimiter(), express.json({ limit: '32kb' }), express.urlencoded({ extended: false, limit: '32kb' }));
+app.use(['/api/bitpay', '/api/wallet'], createRateLimiter(), express.json({ limit: '32kb' }), express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));
 
 const maintenanceHealth = productionMaintenanceHealth();
 app.use("/api/health", createRateLimiter(), maintenanceHealthRouter(maintenanceHealth));
 app.use("/api/bitpay", bitpayRoutes);
+app.use("/api/wallet", walletRoutes);
 app.use("/torob_api/v3", torobRoutes);
 app.use("/api", (_req, res) => res.status(404).json({ error: "API route not found" }));
 

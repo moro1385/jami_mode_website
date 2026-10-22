@@ -105,6 +105,11 @@ try {
   process.stdout.write(psql('-f', 'supabase/tests/payment_review.sql'));
   const { runPaymentReviewRaces } = await import('./payment-review-races.mjs');
   await runPaymentReviewRaces({ psql, interactive });
+  psql('-f', 'supabase/migrations/20261022085357_phase1_wallet_ledger.sql');
+  process.stdout.write(psql('-f', 'ops/validate-wallet-ledger.sql'));
+  process.stdout.write(psql('-f', 'supabase/tests/wallet_ledger.sql'));
+  const { runWalletLedgerRaces } = await import('./wallet-ledger-races.mjs');
+  await runWalletLedgerRaces({ psql, interactive });
   console.log('Phase 0 follow-up database assertions passed (local disposable PostgreSQL; synthetic Auth/Storage).');
 } catch (error) {
   failed = true;

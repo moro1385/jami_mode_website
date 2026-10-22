@@ -197,6 +197,13 @@
       "sourceSha256": "f01cda66ce86228d7964b647cbd4a02bc8ee411e352e47537fce5228d7d22415",
       "bootstrapSha256": "f01cda66ce86228d7964b647cbd4a02bc8ee411e352e47537fce5228d7d22415",
       "correction": null
+    },
+    {
+      "order": 29,
+      "filename": "20261022085357_phase1_wallet_ledger.sql",
+      "sourceSha256": "9b498442fb62c3d1923f1090b6fa4a053f5cd2435673ad69be5e6cb33063fc23",
+      "bootstrapSha256": "9b498442fb62c3d1923f1090b6fa4a053f5cd2435673ad69be5e6cb33063fc23",
+      "correction": null
     }
   ],
   "preflight": {
