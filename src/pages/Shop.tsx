@@ -1,3 +1,4 @@
+import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadError';
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import ProductCard from "@/components/ProductCard";
@@ -23,7 +24,7 @@ export default function Shop() {
   const categoryQuery = searchParams.get("category");
   const searchQuery = searchParams.get("query");
 
-  const { data: products, isLoading, error } = useProducts({
+  const { data: products, isLoading, error, refetch, isFetching } = useProducts({
     department: departmentQuery,
     category: categoryQuery,
     terms: searchQuery ? [searchQuery] : undefined
@@ -157,9 +158,7 @@ export default function Shop() {
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
               </div>
             ) : error ? (
-              <p className="text-center text-sm text-muted-foreground py-24">
-                در حال حاضر امکان بارگذاری محصولات وجود ندارد. لطفاً دوباره تلاش کنید.
-              </p>
+              <CatalogReadError retry={refetch} busy={isFetching} />
             ) : visible.length === 0 ? (
               <p className="text-center text-sm text-muted-foreground py-24">محصولی یافت نشد</p>
             ) : (

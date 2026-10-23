@@ -1,0 +1,11 @@
+import { supabase } from '@/integrations/supabase/client';
+import { createWalletService } from './application/walletService';
+import { createReceiptService } from './application/receiptService';
+import { createCallbackService } from './application/callbackService';
+import { createSupabasePaymentTransport } from './infrastructure/supabasePaymentTransport';
+const transport = createSupabasePaymentTransport(supabase, (path, init) => fetch(path, init), ms => AbortSignal.timeout(ms));
+const wallet = createWalletService(transport);
+export const walletRequest = wallet.request;
+export const walletSummary = wallet.summary;
+export const checkoutReceipts = createReceiptService(transport, { getItem: key => sessionStorage.getItem(key), removeItem: key => sessionStorage.removeItem(key) });
+export const paymentCallbacks = createCallbackService(transport);

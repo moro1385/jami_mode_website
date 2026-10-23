@@ -1,9 +1,11 @@
+import { CartSyncNotice } from '@/features/cart/presentation/CartSyncNotice';
 import { Link, useNavigate } from "react-router-dom";
 import { ExternalLink, Loader2, X } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice } from "@/services/products";
 import QuantitySelector from "@/components/QuantitySelector";
 import SEO from "@/components/SEO";
+import { cartSummary } from "@/features/cart/domain/cart";
 import { colorNames } from "@/lib/translations";
 
 export default function Cart() {
@@ -12,8 +14,7 @@ const navigate = useNavigate();
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const removeItem = useCartStore((s) => s.removeItem);
 
-  const subtotal = items.reduce((sum, i) => sum + parseFloat(i.price.amount) * i.quantity, 0);
-  const currency = items[0]?.price.currencyCode ?? "USD";
+  const { subtotal, currency } = cartSummary(items);
 
   const handleCheckout = () => {
     navigate("/checkout");
@@ -27,6 +28,7 @@ const navigate = useNavigate();
           description="مشاهده و تکمیل سبد خرید شما در جامی مد."
         />
         <h1 className="text-2xl font-medium text-foreground mb-4">سبد خرید</h1>
+        <CartSyncNotice />
         <p className="text-sm text-foreground mb-8">شما هیچ محصولی در سبد خرید خود ندارید.</p>
         <Link
           to="/shop"
@@ -45,6 +47,7 @@ const navigate = useNavigate();
         description="مشاهده و تکمیل سبد خرید شما در جامی مد."
       />
       <h1 className="text-2xl font-medium text-foreground mb-12">سبد خرید</h1>
+      <CartSyncNotice />
       <div className="space-y-8">
         {items.map((item) => (
           <div key={item.id} className="flex gap-6 border-b border-border pb-8">

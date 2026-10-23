@@ -1,5 +1,5 @@
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { CreditCard, LogOut, MapPin, Package, ShoppingCart, User, RotateCcw, Mail } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { formatPhone } from "@/lib/phone";
@@ -24,15 +24,23 @@ interface AccountLayoutProps {
 
 export default function AccountLayout({ title, description, children }: AccountLayoutProps) {
   const navigate = useNavigate();
+  const signOutLock = useRef(false);
+  const [signingOut, setSigningOut] = useState(false);
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
 
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
 
   const handleSignOut = async () => {
-    await signOut();
-    toast.success("شما خارج شدید");
-    navigate("/", { replace: true });
+    if (signOutLock.current) return;
+    signOutLock.current = true; setSigningOut(true);
+    try {
+      await signOut();
+      if (useAuthStore.getState().user) return;
+      toast.success("شما خارج شدید");
+      navigate("/", { replace: true });
+    } catch { toast.error("تکمیل خروج از حساب تأیید نشد. اتصال را بررسی کنید."); }
+    finally { signOutLock.current = false; setSigningOut(false); }
   };
 
   return (
@@ -70,6 +78,7 @@ export default function AccountLayout({ title, description, children }: AccountL
 
             <button
               onClick={handleSignOut}
+              disabled={signingOut}
               className="mt-4 w-full flex items-center gap-3 px-4 py-3 border border-border bg-background text-xs text-muted-foreground hover:text-destructive hover:border-destructive/40 transition-colors rounded-full"
             >
               <LogOut className="w-4 h-4" strokeWidth={1.5} />

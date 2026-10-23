@@ -12,14 +12,16 @@ vi.mock("@/components/ui/select", () => ({
   SelectContent: ({ children }: { children: ReactNode }) => <>{children}</>,
   SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
 }));
+vi.mock("@/stores/authStore", () => ({ useAuthStore: (select: (state: { user: { id: string } }) => unknown) => select({ user: { id: "synthetic-admin" } }) }));
 import AdminOrders from "@/pages/admin/AdminOrders";
 
 beforeEach(() => {
   vi.resetAllMocks();
   const order = { id: "order-id", created_at: "2026-01-01", status: "confirmed", total_amount: 1000, shipping_cost: 0, payment_method: "gateway", profiles: null };
-  const chain = { eq: mocks.eq, select: () => ({ single: mocks.single }) };
+  let requestedStatus = order.status;
+  const chain = { eq: mocks.eq, select: () => ({ single: async () => { const result = await mocks.single(); if (result.data && !result.error) order.status = requestedStatus; return result; } }) };
   mocks.eq.mockReturnValue(chain);
-  mocks.update.mockReturnValue(chain);
+  mocks.update.mockImplementation((patch: { status: string }) => { requestedStatus = patch.status; return chain; });
   mocks.from.mockReturnValue({ update: mocks.update, select: () => ({ order: async () => ({ data: [order], error: null }) }) });
 });
 afterEach(cleanup);

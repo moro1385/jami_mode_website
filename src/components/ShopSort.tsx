@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export const SORT_OPTIONS = [
+const SORT_OPTIONS = [
   { value: "newest", label: "جدیدترین" },
   { value: "price-asc", label: "ارزان‌ترین" },
   { value: "price-desc", label: "گران‌ترین" },

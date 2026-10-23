@@ -1,11 +1,10 @@
-import { useState, useRef } from "react";
 import { useNavigate, Navigate } from "react-router-dom";
 import { ChevronRight, CreditCard, Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
 import { useCartStore } from "@/stores/cartStore";
 import { useCheckoutStore } from "@/stores/checkoutStore";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { checkoutSelection } from "@/features/payments/domain/checkout";
+import { useGatewayCheckout } from "@/features/payments/presentation/useGatewayCheckout";
 import WalletCheckout from "@/components/checkout/WalletCheckout";
 
 export default function CheckoutPayment() {
@@ -19,9 +18,8 @@ export default function CheckoutPayment() {
 
   const items = rawItems || [];
 
-  const [busy, setBusy] = useState(false);
-  const [quote, setQuote] = useState<{ quote: string; total: number; shipping: number; selection: string } | null>(null);
-  const requestRef = useRef<{ selection: string; key: string } | null>(null);
+  const selection = checkoutSelection(selectedAddress?.id ?? '', shippingMethod ?? '', items);
+  const { busy, quote, handleGatewayOrder } = useGatewayCheckout(user?.id, selection);
 
   // If we arrived here without an address/shipping selected, kick back to step 1
   if (!selectedAddress || !shippingMethod || !items || items.length === 0) {
@@ -30,94 +28,6 @@ export default function CheckoutPayment() {
 
   const subtotal = items.reduce((sum, i) => sum + parseFloat(i.price.amount) * i.quantity, 0);
   const finalTotal = quote?.total ?? subtotal + shippingCost;
-
-  const handleGatewayOrder = async () => {
-    if (!user || busy) return;
-
-    setBusy(true);
-    try {
-      const selection = {
-        addressId: selectedAddress.id, shippingOption: shippingMethod,
-        items: items.map(item => ({ productId: item.productId, quantity: item.quantity,
-          size: item.selectedSize, color: item.selectedColor })),
-      };
-      const serialized = JSON.stringify(selection);
-      // Persist the key before the first request; retries/reloads reuse it.
-      const storageKey = 'trusted-checkout:' + user.id;
-      if (!requestRef.current || requestRef.current.selection !== serialized) {
-        const saved = sessionStorage.getItem(storageKey);
-        const parsed: unknown = saved ? JSON.parse(saved) : null;
-        requestRef.current = typeof parsed === 'object' && parsed !== null && 'selection' in parsed
-          && parsed.selection === serialized && 'key' in parsed && typeof parsed.key === 'string'
-          ? { selection: serialized, key: parsed.key } : { selection: serialized, key: crypto.randomUUID() };
-        sessionStorage.setItem(storageKey, JSON.stringify(requestRef.current));
-      }
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) throw new Error('Authentication required');
-      const headers = { 'Content-Type': 'application/json', Authorization: 'Bearer ' + sessionData.session.access_token };
-      const confirmedQuote = quote?.selection === serialized ? quote : null;
-      const checkoutResponse = await fetch(confirmedQuote ? '/api/bitpay/checkout' : '/api/bitpay/checkout/quote', {
-        method: 'POST', headers,
-        body: JSON.stringify({ idempotencyKey: requestRef.current.key, selection,
-          ...(confirmedQuote ? { quote: confirmedQuote.quote } : {}) }),
-      });
-      const result = await checkoutResponse.json();
-      if (!checkoutResponse.ok) {
-        setQuote(null);
-        if (result.code === 'CHECKOUT_EXPIRED') {
-          requestRef.current = null; sessionStorage.removeItem(storageKey);
-          toast.info('مهلت سفارش قبلی تمام شده است. مبلغ و موجودی را دوباره بررسی کنید.'); return;
-        }
-        if (result.code === 'PENDING_ORDER_LIMIT') {
-          toast.error('چند سفارش پرداخت‌نشده دارید. ابتدا وضعیت سفارش‌های قبلی را پیگیری کنید.',
-            { action: { label: 'سفارش‌های من', onClick: () => navigate('/account/orders') } }); return;
-        }
-        throw new Error(result.error || 'Checkout rejected');
-      }
-      if (!confirmedQuote) {
-        if (typeof result.quote !== 'string' || !Number.isSafeInteger(result.total) || !Number.isSafeInteger(result.shipping)) throw new Error('Invalid quote');
-        setQuote({ quote: result.quote, total: result.total, shipping: result.shipping, selection: serialized });
-        return;
-      }
-      if (typeof result.orderId !== 'string') throw new Error('Missing trusted order');
-      sessionStorage.setItem(storageKey, JSON.stringify({ ...requestRef.current, orderId: result.orderId }));
-      const response = await fetch("/api/bitpay/init", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionData.session?.access_token}`
-        },
-        body: JSON.stringify({ orderId: result.orderId })
-      });
-      const bitpayData = await response.json();
-      if (response.ok && bitpayData.success === true) {
-        navigate(`/checkout/success?order=${encodeURIComponent(result.orderId)}`);
-        return;
-      }
-      if (bitpayData.code === 'PAYMENT_AMBIGUOUS') {
-        toast.error('وضعیت پرداخت هنوز مشخص نیست. اگر وجه کسر شده، پیش از پرداخت دوباره سفارش را پیگیری کنید.',
-          { action: { label: 'پیگیری سفارش', onClick: () => navigate('/account/orders') } }); return;
-      }
-      const bitpayError = !response.ok ? new Error(bitpayData.error || 'Fetch error') : null;
-
-      if (bitpayError || bitpayData?.error || !bitpayData?.redirectUrl) {
-        const errMsg = bitpayData?.error || bitpayError?.message || "مشکلی در اتصال به درگاه پرداخت رخ داد.";
-        toast.error(errMsg);
-        setBusy(false);
-        return;
-      }
-
-      // Redirect to Bitpay
-      window.location.href = bitpayData.redirectUrl;
-      return; // Halt further execution, user is redirecting
-
-    } catch (err) {
-      console.error("Order error", err);
-      toast.error("ثبت سفارش با شکست مواجه شد. لطفاً دوباره تلاش کنید.");
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-24">
@@ -137,8 +47,7 @@ export default function CheckoutPayment() {
             <h2 className="text-lg font-medium text-foreground mb-6">روش پرداخت</h2>
 
             <div className="space-y-4">
-              <WalletCheckout key={user?.id} selection={{ addressId: selectedAddress.id, shippingOption: shippingMethod,
-                items: items.map(item => ({ productId: item.productId, quantity: item.quantity, size: item.selectedSize, color: item.selectedColor })) }} />
+              <WalletCheckout key={user?.id} selection={selection} />
 
               {quote && <p role="status">مبلغ نهایی سرور: {new Intl.NumberFormat('fa-IR').format(quote.total)} ریال. برای تایید این مبلغ و پرداخت دوباره کلیک کنید.</p>}
               {/* Gateway Option */}

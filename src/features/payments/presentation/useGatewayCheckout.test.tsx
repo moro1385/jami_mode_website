@@ -1,0 +1,41 @@
+import { act, cleanup, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+const mocks = vi.hoisted(() => ({ step: vi.fn(), navigate: vi.fn(), error: vi.fn(), info: vi.fn(), owner: 'A' }));
+vi.mock('../gateway', () => ({ gatewayCheckout: { step: mocks.step } }));
+vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
+vi.mock('sonner', () => ({ toast: { error: mocks.error, info: mocks.info } }));
+vi.mock('@/stores/authStore', () => ({ useAuthStore: { getState: () => ({ user: { id: mocks.owner } }) } }));
+import { useGatewayCheckout } from './useGatewayCheckout';
+const selection = { addressId: 'owned', shippingOption: 'express', items: [{ productId: 'product', quantity: 1 }] };
+const deferred = () => { let resolve!: (value: unknown) => void; const promise = new Promise(r => { resolve = r; }); return { promise, resolve }; };
+beforeEach(() => { vi.clearAllMocks(); mocks.owner = 'A'; });
+afterEach(cleanup);
+it('locks duplicate clicks synchronously and quotes before a separate confirmation', async () => {
+ const d = deferred(); mocks.step.mockReturnValueOnce(d.promise).mockResolvedValueOnce({ kind: 'paid', orderId: 'receipt' });
+ const h = renderHook(() => useGatewayCheckout('A', selection));
+ let pending!: Promise<void>;
+ act(() => { pending = h.result.current.handleGatewayOrder(); void h.result.current.handleGatewayOrder(); });
+ expect(mocks.step).toHaveBeenCalledTimes(1); expect(mocks.step.mock.calls[0][2]).toBeNull();
+ const quote = { selection: JSON.stringify(selection), hash: 'proof', total: 9000, shipping: 2000 };
+ await act(async () => { d.resolve({ kind: 'quote', quote }); await pending; });
+ expect(mocks.navigate).not.toHaveBeenCalled(); expect(h.result.current.quote).toEqual(quote);
+ await act(async () => { await h.result.current.handleGatewayOrder(); });
+ expect(mocks.step.mock.calls[1][2]).toEqual(quote); expect(mocks.navigate).toHaveBeenCalledWith('/checkout/success?order=receipt');
+});
+it('selection A to B to A never revives the old request or its quote', async () => {
+ const d = deferred(); mocks.step.mockReturnValue(d.promise);
+ const h = renderHook(({ selected }) => useGatewayCheckout('A', selected), { initialProps: { selected: selection } });
+ let pending!: Promise<void>; act(() => { pending = h.result.current.handleGatewayOrder(); });
+ const isCurrent = mocks.step.mock.calls[0][3]; expect(isCurrent()).toBe(true);
+ h.rerender({ selected: { ...selection, shippingOption: 'tipax' } }); h.rerender({ selected: selection });
+ expect(isCurrent()).toBe(false);
+ await act(async () => { d.resolve({ kind: 'paid', orderId: 'stale' }); await pending; });
+ expect(mocks.navigate).not.toHaveBeenCalled(); expect(h.result.current.quote).toBeNull(); expect(h.result.current.busy).toBe(false);
+});
+it('cannot navigate from a paid result after unmount or an owner change', async () => {
+ const d = deferred(); mocks.step.mockReturnValue(d.promise);
+ const h = renderHook(() => useGatewayCheckout('A', selection)); let pending!: Promise<void>;
+ act(() => { pending = h.result.current.handleGatewayOrder(); }); mocks.owner = 'B'; h.unmount();
+ await act(async () => { d.resolve({ kind: 'paid', orderId: 'old' }); await pending; });
+ expect(mocks.navigate).not.toHaveBeenCalled(); expect(mocks.error).not.toHaveBeenCalled();
+});

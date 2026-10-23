@@ -21,6 +21,7 @@ beforeEach(() => {
   mocks.from.mockReturnValue({ select: () => ({ eq: () => ({ maybeSingle: mocks.maybeSingle }) }) });
   mocks.maybeSingle.mockResolvedValue({ data: null, error: null });
   mocks.saveProfileEdits.mockResolvedValue(undefined);
+  mocks.signOut.mockResolvedValue({ error: null });
 });
 
 describe("auth store compatibility", () => {
@@ -146,9 +147,12 @@ it('retains same-account order cache on token refresh', async () => {
 it('does not restore a previous account when an address deletion finishes late', async () => {
   let complete: (value: unknown) => void = () => {};
   const request = new Promise(resolve => { complete = resolve; });
-  mocks.from.mockReturnValue({ delete: () => ({ eq: () => request }) });
-  const deleting = useAuthStore.getState().deleteAddress('owned-old-address');
-  useAuthStore.setState({ user: { ...customer, id: 'other' } }); complete({ error: null }); await deleting;
+  const address = { id: 'owned-old-address', label: 'home', recipient: 'Name', phone: '', country: '', city: '', line1: '', postalCode: '', isDefault: true };
+  useAuthStore.setState({ user: { ...customer, addresses: [address] } });
+  const chain = { eq: () => chain, select: () => ({ single: () => request }) };
+  mocks.from.mockImplementation(() => ({ delete: () => chain, select: () => ({ eq: async () => ({ data: [], error: null }) }) }));
+  const deleting = useAuthStore.getState().deleteAddress(address.id);
+  useAuthStore.setState({ user: { ...customer, id: 'other' } }); complete({ data: { id: address.id }, error: null }); await deleting;
   expect(useAuthStore.getState().user?.id).toBe('other');
 });
 it('a slower password sign-in cannot overwrite a later sign-in', async () => {
@@ -160,4 +164,69 @@ it('a slower password sign-in cannot overwrite a later sign-in', async () => {
   const previous = useAuthStore.getState().signInWithPassword('09110000001', 'synthetic');
   await useAuthStore.getState().signInWithPassword('09110000002', 'synthetic'); complete(result('previous')); await previous;
   expect(useAuthStore.getState().user?.id).toBe('latest');
+});
+
+describe('persisted address store outcomes', () => {
+  const address = { id: 'owned', label: 'home', recipient: 'Name', phone: '', country: '', city: '', line1: '', postalCode: '', isDefault: true };
+  it('rejects unsigned address changes', async () => {
+    useAuthStore.setState({ user: null, session: null });
+    await expect(useAuthStore.getState().upsertAddress(address)).rejects.toThrow('Sign in');
+  });
+  it('reloads actual addresses after a denied delete and still rejects the action', async () => {
+    useAuthStore.setState({ user: { ...customer, addresses: [address] } });
+    const chain = { eq: () => chain, select: () => ({ single: async () => ({ data: null, error: Error('denied') }) }) };
+    mocks.from.mockImplementation(() => ({ delete: () => chain, select: () => ({ eq: async () => ({ data: [{ ...address, label: 'persisted', postal_code: '', is_default: true }], error: null }) }) }));
+    await expect(useAuthStore.getState().deleteAddress(address.id)).rejects.toThrow('denied');
+    expect(useAuthStore.getState().user?.addresses[0].label).toBe('persisted');
+    expect(useAuthStore.getState().user?.wallet.balance).toBe(customer.wallet.balance);
+  });
+  it('keeps the last known state if mutation and recovery read both fail', async () => {
+    useAuthStore.setState({ user: { ...customer, addresses: [address] } });
+    const chain = { eq: () => chain, select: () => ({ single: async () => ({ data: null, error: Error('denied') }) }) };
+    mocks.from.mockImplementation(() => ({ delete: () => chain, select: () => ({ eq: async () => ({ data: null, error: Error('offline') }) }) }));
+    await expect(useAuthStore.getState().deleteAddress(address.id)).rejects.toThrow('denied');
+    expect(useAuthStore.getState().user?.addresses).toEqual([address]);
+  });
+});
+
+it('does not let a late profile save overwrite the current account lifetime', async () => {
+ let complete!: () => void; mocks.saveProfileEdits.mockReturnValueOnce(new Promise<void>(r => { complete = r; }));
+ const updating = useAuthStore.getState().updateProfile({ firstName: 'Stale' });
+ authListener('SIGNED_OUT', null); useAuthStore.setState({ user: { ...customer, firstName: 'Reentered' }, session });
+ complete(); await updating; expect(useAuthStore.getState().user?.firstName).toBe('Reentered');
+});
+it('retains a completed profile edit when an older bootstrap read finishes', async () => {
+ let complete!: (value: unknown) => void; const pending = new Promise(r => { complete = r; });
+ mocks.getSession.mockResolvedValueOnce({ data: { session: { access_token: 'synthetic', user: { id: customer.id, created_at: '2026-01-01' } } }, error: null });
+ mocks.completePendingSignup.mockResolvedValue(null);
+ mocks.from.mockImplementation((table: string) => ({ select: () => ({ eq: () => table === 'profiles' ? { single: () => pending } : Promise.resolve({ data: [], error: null }) }) }));
+ const boot = useAuthStore.getState().bootstrap(); await Promise.resolve(); await Promise.resolve();
+ await useAuthStore.getState().updateProfile({ firstName: 'Saved' });
+ complete({ data: { first_name: 'Old', wallet_balance: 7000 }, error: null }); await boot;
+ expect(useAuthStore.getState().user?.firstName).toBe('Saved'); expect(useAuthStore.getState().user?.wallet.balance).toBe(7000);
+});
+it('an old missing-session response cannot clear a newly signed-in account', async () => {
+ let complete!: (value: unknown) => void; mocks.getSession.mockReturnValueOnce(new Promise(r => { complete = r; }));
+ const boot = useAuthStore.getState().bootstrap(); authListener('SIGNED_OUT', null);
+ useAuthStore.setState({ user: { ...customer, id: 'new' }, session: { ...session, userId: 'new' } });
+ complete({ data: { session: null }, error: null }); await boot;
+ expect(useAuthStore.getState().user?.id).toBe('new');
+});
+
+it('does not falsely clear an active account when SDK signout returns an error', async () => {
+ mocks.signOut.mockResolvedValueOnce({ error: { message: 'offline signout' } });
+ await expect(useAuthStore.getState().signOut()).rejects.toThrow('offline signout');
+ expect(useAuthStore.getState().user?.id).toBe(customer.id); expect(useAuthStore.getState().session).toEqual(session);
+});
+
+it('still attempts SDK signout when cart synchronization fails', async () => {
+ const log = vi.spyOn(console, 'error').mockImplementation(() => {}); mocks.flushCartToServer.mockRejectedValueOnce(Error('offline cart'));
+ try { await useAuthStore.getState().signOut(); expect(mocks.signOut).toHaveBeenCalledTimes(1); expect(useAuthStore.getState().user).toBeNull(); }
+ finally { log.mockRestore(); }
+});
+it('does not sign out a new A lifetime after A to signed-out to A while its cart flush is pending', async () => {
+ let finish!: () => void; mocks.flushCartToServer.mockReturnValueOnce(new Promise<void>(r => { finish = r; }));
+ const pending = useAuthStore.getState().signOut(); authListener('SIGNED_OUT', null);
+ useAuthStore.setState({ user: { ...customer, firstName: 'New lifetime' }, session }); finish(); await pending;
+ expect(mocks.signOut).not.toHaveBeenCalled(); expect(useAuthStore.getState().user?.firstName).toBe('New lifetime');
 });

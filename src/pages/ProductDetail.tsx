@@ -1,3 +1,4 @@
+import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadError';
 import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
@@ -16,15 +17,15 @@ import { Helmet } from "react-helmet-async";
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
-  const { data: product, isLoading } = useProduct(slug);
+  const { data: product, isLoading, error, refetch, isFetching } = useProduct(slug);
   const { data: allProducts } = useProducts();
   const addItem = useCartStore((s) => s.addItem);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const [quantity, setQuantity] = useState(1);
   const [selected, setSelected] = useState<Record<string, string>>({});
 
-  const variants = product?.node.variants.edges.map((e) => e.node) ?? [];
-  const options = product?.node.options ?? [];
+  const variants = useMemo(() => product?.node.variants.edges.map((e) => e.node) ?? [], [product]);
+  const options = useMemo(() => product?.node.options ?? [], [product]);
 
   const activeOptions = useMemo(() => {
     const result: Record<string, string> = {};
@@ -57,6 +58,8 @@ export default function ProductDetail() {
       </div>
     );
   }
+
+  if (error) return <CatalogReadError retry={refetch} busy={isFetching} />;
 
   if (!product) return <Navigate to="/shop" replace />;
 

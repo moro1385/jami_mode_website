@@ -10,7 +10,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/integrations/supabase/client", () => ({ supabase: { from: mocks.from, auth: { getSession: mocks.getSession } } }));
 vi.mock("@/stores/authStore", () => ({ useAuthStore: Object.assign(
   (select: (state: { user: typeof mocks.user }) => unknown) => select({ user: mocks.user }),
-  { getState: () => ({ bootstrap: mocks.bootstrap }) },
+  { getState: () => ({ bootstrap: mocks.bootstrap, user: mocks.user }) },
 ) }));
 vi.mock("@/components/account/AccountLayout", () => ({ default: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
 vi.mock("sonner", () => ({ toast: { error: mocks.toastError, success: vi.fn() } }));
@@ -76,7 +76,7 @@ describe("customer financial UI containment", () => {
   it("requires a separate confirmation of server totals and reuses the checkout key", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce({ ok: true, json: async () => ({ quote: 'server-hash', total: 9000, shipping: 2000 }) } as Response)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ orderId: 'trusted-order', total: 9000, shipping: 2000 }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ orderId: '71000000-0000-4000-8000-000000000002', total: 9000, shipping: 2000 }) } as Response)
       .mockResolvedValue({ ok: false, json: async () => ({ error: 'provider disabled' }) } as Response);
     checkout();
     const button = screen.getByRole('button', { name: /\u062f\u0631\u06af\u0627\u0647/ });
@@ -89,7 +89,7 @@ describe("customer financial UI containment", () => {
     const second = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
     expect(second.idempotencyKey).toBe(first.idempotencyKey);
     expect(second.quote).toBe('server-hash');
-    expect(fetch).toHaveBeenLastCalledWith('/api/bitpay/init', expect.objectContaining({ body: JSON.stringify({ orderId: 'trusted-order' }) }));
+    expect(fetch).toHaveBeenLastCalledWith('/api/bitpay/init', expect.objectContaining({ body: JSON.stringify({ orderId: '71000000-0000-4000-8000-000000000002' }) }));
     expect(mocks.from).not.toHaveBeenCalled();
     expect(useCartStore.getState().items).toHaveLength(1);
   });

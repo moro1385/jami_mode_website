@@ -21,7 +21,8 @@
     "test:bootstrap:db": "node scripts/test-bootstrap-db.mjs",
     "build:local-test:offline": "node scripts/build-local-test-offline.mjs",
     "test:phase0:db": "node scripts/test-phase0-db.mjs",
-    "maintenance": "node scripts/maintenance.mjs"
+    "maintenance": "node scripts/maintenance.mjs",
+    "test:e2e:offline": "node scripts/build-isolated.mjs production && playwright test --config playwright.offline.config.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

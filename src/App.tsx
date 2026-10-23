@@ -29,6 +29,7 @@ import RedirectIfAuthenticated from "./components/auth/RedirectIfAuthenticated";
 import RequireAdmin from "./components/auth/RequireAdmin";
 import NotFound from "./pages/NotFound";
 import CartSync from "./components/CartSync";
+import { CatalogCacheBridge } from "@/features/catalog/presentation/CatalogCacheBridge";
 
 const SignIn = lazy(() => import("./pages/SignIn"));
 const SignUp = lazy(() => import("./pages/SignUp"));
@@ -61,6 +62,7 @@ const App = () => {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
+        <CatalogCacheBridge />
         <CartSync />
         <TooltipProvider>
         <Toaster />

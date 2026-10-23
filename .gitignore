@@ -27,3 +27,6 @@ public/sitemap.xml
 
 # Isolated test build artifacts
 dist-local-test
+
+# Synthetic offline browser test results
+.phase3-e2e-artifacts/

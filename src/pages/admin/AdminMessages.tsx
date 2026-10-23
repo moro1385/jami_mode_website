@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useAuthStore } from '@/stores/authStore';
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { useAdminMessages } from '@/features/support/presentation/useAdminMessages';
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -27,112 +28,22 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-type Profile = {
-  id: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-};
-
-type UserMessage = {
-  id: string;
-  user_id: string;
-  title: string;
-  body: string;
-  is_read: boolean;
-  created_at: string;
-};
-
 export default function AdminMessages() {
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [messages, setMessages] = useState<UserMessage[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
-  const [loadingMessages, setLoadingMessages] = useState(true);
+ const ownerId = useAuthStore(state => state.user?.id);
+ return <AdminMessagesContent key={ownerId ?? 'signed-out'} ownerId={ownerId} />;
+}
+function AdminMessagesContent({ ownerId }: { ownerId?: string }) {
+  const { users, messages, loadingUsers, loadingMessages, userError, messageError, retryUsers, retryMessages, displayName: getUserDisplayName, isSubmitting, send } = useAdminMessages(ownerId);
 
   // Form state
   const [selectedUserId, setSelectedUserId] = useState<string>("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [openUserSelect, setOpenUserSelect] = useState(false);
 
-  useEffect(() => {
-    fetchUsers();
-    fetchMessages();
-  }, []);
-
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setUsers(data || []);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("خطا در دریافت لیست کاربران");
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const fetchMessages = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("user_messages")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setMessages(data || []);
-    } catch (error) {
-      console.error("Error fetching messages:", error);
-      toast.error("خطا در دریافت لیست پیام‌ها");
-    } finally {
-      setLoadingMessages(false);
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedUserId || !title.trim() || !body.trim()) return;
-
-    setIsSubmitting(true);
-    try {
-      const { error } = await supabase
-        .from("user_messages")
-        .insert({
-          user_id: selectedUserId,
-          title: title.trim(),
-          body: body.trim(),
-        });
-
-      if (error) throw error;
-
-      toast.success("پیام با موفقیت ارسال شد");
-
-      // Reset form
-      setSelectedUserId("");
-      setTitle("");
-      setBody("");
-
-      // Refresh messages
-      fetchMessages();
-    } catch (error) {
-      console.error("Error sending message:", error);
-      toast.error("خطا در ارسال پیام");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const getUserDisplayName = (userId: string) => {
-    const user = users.find(u => u.id === userId);
-    if (!user) return userId;
-    const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ");
-    return fullName ? `${fullName} — ${user.phone || 'بدون شماره'}` : (user.phone || user.id);
+  const handleSendMessage = async (event: React.FormEvent) => {
+    event.preventDefault(); setOpenUserSelect(false);
+    if (await send(selectedUserId, title, body)) { setSelectedUserId(''); setTitle(''); setBody(''); }
   };
 
   return (
@@ -147,6 +58,7 @@ export default function AdminMessages() {
       {/* Compose Message Section */}
       <div className="bg-background border rounded-2xl p-6">
         <h2 className="text-xl font-semibold mb-6">ارسال پیام جدید</h2>
+        {!!userError && <ReadFailure retry={retryUsers} message="خطا در دریافت لیست کاربران" />}
         <form onSubmit={handleSendMessage} className="space-y-4">
           <div className="space-y-2 flex flex-col">
             <label className="text-sm font-medium">گیرنده پیام</label>
@@ -157,7 +69,7 @@ export default function AdminMessages() {
                   role="combobox"
                   aria-expanded={openUserSelect}
                   className="w-full justify-between"
-                  disabled={loadingUsers}
+                  disabled={loadingUsers || !!userError || isSubmitting}
                 >
                   {selectedUserId
                     ? getUserDisplayName(selectedUserId)
@@ -179,6 +91,7 @@ export default function AdminMessages() {
                         return (
                           <CommandItem
                             key={user.id}
+                            disabled={isSubmitting}
                             value={label}
                             onSelect={() => {
                               setSelectedUserId(user.id);
@@ -203,9 +116,11 @@ export default function AdminMessages() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">عنوان پیام</label>
+            <label htmlFor="admin-message-title" className="text-sm font-medium">عنوان پیام</label>
             <Input
+              id="admin-message-title"
               value={title}
+              disabled={isSubmitting}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="عنوان پیام را وارد کنید"
               required
@@ -213,9 +128,11 @@ export default function AdminMessages() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium">متن پیام</label>
+            <label htmlFor="admin-message-body" className="text-sm font-medium">متن پیام</label>
             <Textarea
+              id="admin-message-body"
               value={body}
+              disabled={isSubmitting}
               onChange={(e) => setBody(e.target.value)}
               placeholder="متن پیام را وارد کنید"
               className="min-h-[120px]"
@@ -225,7 +142,7 @@ export default function AdminMessages() {
 
           <Button
             type="submit"
-            disabled={!selectedUserId || !title.trim() || !body.trim() || isSubmitting}
+            disabled={!!userError || loadingUsers || !selectedUserId || !title.trim() || !body.trim() || isSubmitting}
             className="w-full sm:w-auto"
           >
             {isSubmitting ? (
@@ -266,7 +183,7 @@ export default function AdminMessages() {
                     </div>
                   </td>
                 </tr>
-              ) : messages.length === 0 ? (
+              ) : messageError ? (<tr><td colSpan={5}><ReadFailure retry={retryMessages} message="خطا در دریافت لیست پیام‌ها" /></td></tr>) : messages.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                     هیچ پیامی ارسال نشده است

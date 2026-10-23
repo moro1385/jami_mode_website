@@ -1,10 +1,11 @@
+import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadError';
 import { Loader2 } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { useProducts } from "@/hooks/useProducts";
 
 
 export default function CoreCollection() {
-  const { data: products, isLoading } = useProducts();
+  const { data: products, isLoading, error, refetch, isFetching } = useProducts();
 
   return (
     <>
@@ -35,7 +36,7 @@ export default function CoreCollection() {
           <div className="flex justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : !products || products.length === 0 ? (
+        ) : error ? <CatalogReadError retry={refetch} busy={isFetching} /> : !products || products.length === 0 ? (
           <p className="text-center text-sm text-muted-foreground py-16">محصولی یافت نشد</p>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">

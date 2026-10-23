@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { contactSupport } from "@/features/support/contact";
 import SEO from "@/components/SEO";
 
 export default function Contact() {
@@ -12,30 +12,23 @@ export default function Contact() {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const { error } = await supabase.from('tickets').insert({
-      first_name: form.firstName,
-      last_name: form.lastName,
-      email: form.email || null,
-      subject: form.subject,
-      message: form.message
-    });
-
-    if (error) {
+    try {
+      await contactSupport.submit(form);
+      toast({
+        title: "پیام شما ارسال شد!",
+        description: "از پیام شما سپاسگزاریم. همکاران ما در کمتر از ۲۴ ساعت آینده با شما تماس خواهند گرفت.",
+      });
+      setForm({ firstName: "", lastName: "", email: "", subject: "", message: "" });
+    } catch (error) {
       console.error(error);
       toast({
         title: "خطا در ارسال پیام",
         description: "متاسفانه مشکلی رخ داد. لطفاً دوباره تلاش کنید.",
         variant: "destructive"
       });
-    } else {
-      toast({
-        title: "پیام شما ارسال شد!",
-        description: "از پیام شما سپاسگزاریم. همکاران ما در کمتر از ۲۴ ساعت آینده با شما تماس خواهند گرفت.",
-      });
-      setForm({ firstName: "", lastName: "", email: "", subject: "", message: "" });
+    } finally {
+      setIsSubmitting(false);
     }
-    
-    setIsSubmitting(false);
   };
 
   const update = (field: string) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
