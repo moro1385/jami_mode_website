@@ -1,29 +1,9 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { useAuthStore } from "@/stores/authStore";
+import { useOrderDetails } from "@/features/orders/presentation/useOrderDetails";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
-
-type OrderItemSnapshot = {
-  id: string;
-  order_id: string;
-  price: number;
-  quantity: number;
-  title: string | null;
-  variant_title: string | null;
-  image_url: string | null;
-};
-
-type OrderSnapshot = {
-  id: string;
-  created_at: string;
-  status: string;
-  total_amount: number;
-  shipping_cost: number;
-  shipping_method: string | null;
-  payment_method: string | null;
-  shipping_address: string | null;
-};
 
 interface OrderDetailsDialogProps {
   open: boolean;
@@ -32,42 +12,8 @@ interface OrderDetailsDialogProps {
 }
 
 export function OrderDetailsDialog({ open, onOpenChange, orderId }: OrderDetailsDialogProps) {
-  const [order, setOrder] = useState<OrderSnapshot | null>(null);
-  const [items, setItems] = useState<OrderItemSnapshot[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (open && orderId) {
-      fetchOrderDetails();
-    }
-  }, [open, orderId]);
-
-  async function fetchOrderDetails() {
-    setIsLoading(true);
-    try {
-      const [orderRes, itemsRes] = await Promise.all([
-        supabase
-          .from("orders")
-          .select("id, created_at, status, total_amount, shipping_cost, shipping_method, payment_method, shipping_address")
-          .eq("id", orderId)
-          .single(),
-        supabase
-          .from("order_items")
-          .select("id, order_id, price, quantity, title, variant_title, image_url")
-          .eq("order_id", orderId)
-      ]);
-
-      if (orderRes.error) throw orderRes.error;
-      if (itemsRes.error) throw itemsRes.error;
-
-      setOrder(orderRes.data as unknown as OrderSnapshot);
-      setItems(itemsRes.data as unknown as OrderItemSnapshot[]);
-    } catch (err) {
-      console.error("Error fetching order details:", err);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const actorId = useAuthStore(state => state.user?.id);
+  const { order, items, isLoading, error, retry } = useOrderDetails(open, orderId, actorId);
 
   const statusTranslations: Record<string, string> = {
     pending: "در انتظار",
@@ -94,7 +40,7 @@ export function OrderDetailsDialog({ open, onOpenChange, orderId }: OrderDetails
           <div className="flex justify-center p-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : !order ? (
+        ) : error ? (<ReadFailure retry={retry} />) : !order ? (
           <div className="text-center p-8 text-muted-foreground">سفارش پیدا نشد.</div>
         ) : (
           <div className="mt-4 space-y-6">

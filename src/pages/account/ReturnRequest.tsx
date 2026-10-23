@@ -1,9 +1,12 @@
-import { useState, useEffect } from "react";
+import { useScopedAsyncRead } from '@/shared/presentation/useScopedAsyncRead';
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { useRequestScope } from '@/shared/presentation/useRequestScope';
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2, Upload, X, ArrowRight } from "lucide-react";
 import AccountLayout from "@/components/account/AccountLayout";
 import { useAuthStore } from "@/stores/authStore";
-import { supabase } from "@/integrations/supabase/client";
+import { returnsService } from "@/features/returns/returns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,18 +15,21 @@ import { normalizePhone, isValidPhone } from "@/lib/phone";
 
 import { uploadReturnImages, cleanupReturnImages, validateReturnImage } from '@/lib/returnImages';
 
-interface Order {
-  id: string;
-  number: string;
-  createdAt: string;
-}
 
 export default function ReturnRequest() {
+  const ownerId = useAuthStore(state => state.user?.id);
+  return <ReturnRequestContent key={ownerId ?? "signed-out"} />;
+}
+
+function ReturnRequestContent() {
   const user = useAuthStore((s) => s.user);
+  const captureScope = useRequestScope(user?.id);
   const navigate = useNavigate();
 
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(true);
+  const ownerId = user?.id;
+  const loadOrders = useCallback(() => returnsService.listOrders(ownerId!), [ownerId]);
+  const orderRead = useScopedAsyncRead(ownerId, loadOrders);
+  const orders = orderRead.value ?? [], loadingOrders = orderRead.loading;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string>("");
@@ -31,35 +37,6 @@ export default function ReturnRequest() {
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<{ phone?: string; description?: string }>({});
-
-  useEffect(() => {
-    async function fetchOrders() {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select("id, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        const formattedOrders = (data || []).map((o) => ({
-          id: o.id,
-          number: o.id.split("-")[0].toUpperCase(),
-          createdAt: o.created_at,
-        }));
-        setOrders(formattedOrders);
-      } catch (err) {
-        console.error("Failed to fetch orders:", err);
-        toast.error("خطا در دریافت سفارشات");
-      } finally {
-        setLoadingOrders(false);
-      }
-    }
-
-    fetchOrders();
-  }, [user]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -83,7 +60,7 @@ export default function ReturnRequest() {
 
     // Inline validation
     const newErrors: { phone?: string; description?: string } = {};
-    if (!selectedOrderId) {
+    if (orderRead.error || !orders.some(order => order.id === selectedOrderId)) {
       toast.error("لطفاً یک سفارش را انتخاب کنید.");
       return;
     }
@@ -105,39 +82,38 @@ export default function ReturnRequest() {
     }
 
     if (!user || isSubmitting) return;
+    const isCurrent=captureScope(); if(!isCurrent())return;
     setErrors({});
     setIsSubmitting(true);
     let uploadedPaths: string[] = [];
     try {
       // 1. Upload images first
       uploadedPaths = await uploadReturnImages(user.id, files);
+      if(!isCurrent()){ await cleanupReturnImages(uploadedPaths); return; }
 
       // 2. Create the return request record
-      const { error } = await supabase
-        .from("return_requests")
-        .insert({
-          user_id: user!.id,
-          order_id: selectedOrderId,
-          phone: normalizedPhone,
-          description,
-          image_urls: uploadedPaths,
+      try {
+        await returnsService.submit({
+          user_id: user.id, order_id: selectedOrderId, phone: normalizedPhone,
+          description, image_urls: uploadedPaths,
         });
-
-      if (error) {
+      } catch {
         await cleanupReturnImages(uploadedPaths);
         throw new Error("خطا در ثبت درخواست. لطفاً دوباره تلاش کنید.");
       }
 
+      if(!isCurrent())return;
       toast.success("درخواست مرجوعی شما با موفقیت ثبت شد.");
       navigate("/account/orders");
     } catch (error) {
+      if(!isCurrent())return;
       if (error instanceof Error) {
         toast.error(error.message);
       } else {
         toast.error("خطا در ثبت درخواست");
       }
     } finally {
-      setIsSubmitting(false);
+      if(isCurrent())setIsSubmitting(false);
     }
   };
 
@@ -150,6 +126,8 @@ export default function ReturnRequest() {
       </AccountLayout>
     );
   }
+
+  if (orderRead.error) return <AccountLayout title="درخواست مرجوعی"><ReadFailure retry={orderRead.retry} message="خطا در دریافت سفارشات" /></AccountLayout>;
 
   return (
     <AccountLayout title="درخواست مرجوعی" description="ثبت درخواست مرجوعی برای سفارشات">

@@ -1,13 +1,21 @@
+import { useRequestScope } from '@/shared/presentation/useRequestScope';
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import AccountLayout from "@/components/account/AccountLayout";
 import FormField from "@/components/auth/FormField";
 import { useAuthStore } from "@/stores/authStore";
+import { validateProfileForm } from "@/features/account/domain/forms";
 import { formatPhone } from "@/lib/phone";
 import { toast } from "sonner";
 
 export default function PersonalInformation() {
+  const ownerId = useAuthStore(state => state.user?.id);
+  return <PersonalInformationContent key={ownerId ?? "signed-out"} />;
+}
+
+function PersonalInformationContent() {
   const user = useAuthStore((s) => s.user);
+  const captureScope = useRequestScope(user?.id);
   const updateProfile = useAuthStore((s) => s.updateProfile);
 
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "" });
@@ -15,9 +23,8 @@ export default function PersonalInformation() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      setForm({ firstName: user.firstName, lastName: user.lastName, email: user.email ?? "" });
-    }
+    setForm({ firstName: user?.firstName ?? "", lastName: user?.lastName ?? "", email: user?.email ?? "" });
+    setErrors({});
   }, [user]);
 
   const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -25,22 +32,20 @@ export default function PersonalInformation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const next: Record<string, string> = {};
-    if (!form.firstName.trim()) next.firstName = "نام الزامی است.";
-    if (!form.lastName.trim()) next.lastName = "نام خانوادگی الزامی است.";
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim()))
-      next.email = "یک آدرس ایمیل معتبر وارد کنید.";
+    const isCurrent=captureScope(); if(!isCurrent())return;
+    const next = validateProfileForm(form);
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setSaving(true);
     try {
       await updateProfile(form);
+      if(!isCurrent())return;
       toast.success("اطلاعات شما ذخیره شد");
     } catch {
-      toast.error("ذخیره اطلاعات شما انجام نشد. لطفاً دوباره تلاش کنید.");
+      if(isCurrent())toast.error("ذخیره اطلاعات شما انجام نشد. لطفاً دوباره تلاش کنید.");
     } finally {
-      setSaving(false);
+      if(isCurrent())setSaving(false);
     }
   };
 

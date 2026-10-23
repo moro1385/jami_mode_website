@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuthStore } from "@/stores/authStore";
-import { supabase } from "@/integrations/supabase/client";
+import { authService } from "@/features/auth/auth";
 
 export default function RequireAdmin() {
   const location = useLocation();
@@ -28,8 +28,7 @@ export default function RequireAdmin() {
       void (async () => {
         let allowed = false;
         try {
-          const { data, error } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
-          allowed = !error && data === true;
+          allowed = await authService.isAdmin(userId);
         } catch {
           // A failed role check stays closed; never reuse another account's result.
         }

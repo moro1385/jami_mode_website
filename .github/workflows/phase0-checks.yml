@@ -37,5 +37,9 @@ jobs:
           pg_bin="$(pg_config --bindir)"
           test -x "$pg_bin/initdb"
           echo "JAMI_TEST_PG_BIN=$pg_bin" >> "$GITHUB_ENV"
+      - name: Install isolated browser test runtime
+        run: npx playwright install --with-deps chromium
+      - name: Browser checkout and account flows with intercepted synthetic APIs
+        run: npm run test:e2e:offline
       - run: npm run test:phase0:db
       - run: npm run test:bootstrap:db

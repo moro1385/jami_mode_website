@@ -1,18 +1,20 @@
+import { useAuthStore } from '@/stores/authStore';
+import { useAdminProducts } from '@/features/catalog/presentation/useAdminProducts';
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { useRequestScope } from '@/shared/presentation/useRequestScope';
 import { errorMessage } from "@/lib/errors";
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import type { AdminProduct as Product } from "@/features/catalog/admin";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Edit, Trash2, Loader2, Copy } from "lucide-react";
 import { toast } from "sonner";
-import type { Database } from "@/integrations/supabase/types";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
-import { slugify } from "@/lib/slugify";
 import { Input } from "@/components/ui/input";
 
-type Product = Database["public"]["Tables"]["products"]["Row"];
 
-function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess: () => void }) {
+function EditablePriceCell({ product, busy, save }: { product: Product; busy: boolean; save: (id: string, price: number) => Promise<boolean> }) {
+  const capture = useRequestScope(product.id);
   const [isEditing, setIsEditing] = useState(false);
   const [currentPrice, setCurrentPrice] = useState(product.price);
   const [editValue, setEditValue] = useState(currentPrice?.toString() || "");
@@ -24,7 +26,7 @@ function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess
   }, [product.price]);
 
   const handleSave = async () => {
-    if (isSaving) return;
+    if (isSaving || busy) return;
 
     if (!editValue || editValue.trim() === "") {
       setEditValue(currentPrice?.toString() || "");
@@ -45,24 +47,18 @@ function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess
       return;
     }
 
+    const current = capture();
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("products")
-        .update({ price: numericPrice })
-        .eq("id", product.id);
-
-      if (error) throw error;
-      toast.success("قیمت با موفقیت بروزرسانی شد");
-      setCurrentPrice(numericPrice);
-      onSuccess();
+      await save(product.id, numericPrice);
+      if (!current()) return;
     } catch (err: unknown) {
+      if (!current()) return;
       console.error("Error updating price:", err);
       toast.error(errorMessage(err, "بروزرسانی قیمت با شکست مواجه شد"));
       setEditValue(currentPrice?.toString() || "");
     } finally {
-      setIsSaving(false);
-      setIsEditing(false);
+      if (current()) { setIsSaving(false); setIsEditing(false); }
     }
   };
 
@@ -86,7 +82,7 @@ function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={handleSave}
           onKeyDown={handleKeyDown}
-          disabled={isSaving}
+          disabled={isSaving || busy}
           autoFocus
           className="h-8"
           dir="ltr"
@@ -98,7 +94,7 @@ function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess
   return (
     <TableCell
       className="cursor-pointer group hover:bg-muted/50 transition-colors"
-      onClick={() => setIsEditing(true)}
+      onClick={() => { if (!busy) setIsEditing(true); }}
       title="برای ویرایش کلیک کنید"
     >
       <div className="flex items-center gap-2">
@@ -110,16 +106,14 @@ function EditablePriceCell({ product, onSuccess }: { product: Product, onSuccess
 }
 
 export default function AdminProducts() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+ const ownerId = useAuthStore(state => state.user?.id);
+ return <AdminProductsContent key={ownerId ?? 'signed-out'} ownerId={ownerId} />;
+}
+function AdminProductsContent({ ownerId }: { ownerId?: string }) {
+  const { products, loading: isLoading, error, retry: fetchProducts, pending, remove, duplicate: handleDuplicateProduct, changePrice } = useAdminProducts(ownerId);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
 
   const handleAddProduct = () => {
     setEditingProduct(null);
@@ -131,64 +125,9 @@ export default function AdminProducts() {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteProduct = async (id: string) => {
-    if (!window.confirm("آیا مطمئن هستید که می‌خواهید این محصول را حذف کنید؟")) return;
-
-    try {
-      const { error } = await supabase.from("products").delete().eq("id", id);
-      if (error) throw error;
-      toast.success("محصول با موفقیت حذف شد");
-      fetchProducts();
-    } catch (err: unknown) {
-      console.error("Error deleting product:", err);
-      toast.error(errorMessage(err, "حذف محصول با شکست مواجه شد"));
-    }
+  const handleDeleteProduct = (id: string) => {
+    if (window.confirm('آیا مطمئن هستید که می‌خواهید این محصول را حذف کنید؟')) void remove(id);
   };
-
-  const handleDuplicateProduct = async (product: Product) => {
-    try {
-      const { id, created_at, ...rest } = product;
-      const duplicatedData = { ...rest };
-      duplicatedData.name = `${product.name} - کپی`;
-      duplicatedData.slug = slugify(duplicatedData.name);
-      duplicatedData.images = [];
-
-      const { error } = await supabase.from("products").insert([duplicatedData]);
-
-      if (error) {
-        if (error.code === "23505" || (error.message && error.message.includes("products_slug_key"))) {
-          toast.error("این نامک (Slug) قبلاً برای محصول دیگری استفاده شده — لطفاً کمی تغییرش بده.");
-        } else {
-          throw error;
-        }
-      } else {
-        toast.success("محصول با موفقیت کپی شد");
-        fetchProducts();
-      }
-    } catch (err: unknown) {
-      console.error("Error duplicating product:", err);
-      toast.error(errorMessage(err, "کپی محصول با شکست مواجه شد"));
-    }
-  };
-
-  async function fetchProducts() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (err) {
-      console.error("Error fetching products:", err);
-      setError("بارگیری محصولات با شکست مواجه شد.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -218,9 +157,7 @@ export default function AdminProducts() {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-destructive">
-            {error}
-          </div>
+          <ReadFailure retry={fetchProducts} message="بارگیری محصولات با شکست مواجه شد." />
         ) : products.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             هیچ محصولی پیدا نشد. برای شروع یکی اضافه کنید.
@@ -241,7 +178,7 @@ export default function AdminProducts() {
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell className="text-muted-foreground">{product.slug}</TableCell>
-                  <EditablePriceCell product={product} onSuccess={fetchProducts} />
+                  <EditablePriceCell product={product} busy={pending(product.id)} save={changePrice} />
                   <TableCell>
                     {product.is_active ? (
                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
@@ -254,13 +191,13 @@ export default function AdminProducts() {
                     )}
                   </TableCell>
                   <TableCell className="text-left">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleDuplicateProduct(product)} title="کپی محصول">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={pending(product.id)} onClick={() => handleDuplicateProduct(product)} title="کپی محصول">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEditProduct(product)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={pending(product.id)} onClick={() => handleEditProduct(product)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => handleDeleteProduct(product.id)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={pending(product.id)} onClick={() => handleDeleteProduct(product.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>

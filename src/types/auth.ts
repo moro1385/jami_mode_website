@@ -1,15 +1,5 @@
-export interface Address {
-  id: string;
-  label: string;
-  recipient: string;
-  phone: string;
-  country: string;
-  city: string;
-  line1: string;
-  line2?: string;
-  postalCode: string;
-  isDefault: boolean;
-}
+import type { Address } from '@/features/account/domain/address';
+export type { Address } from '@/features/account/domain/address';
 
 export interface WalletTransaction {
   id: string;
@@ -18,25 +8,8 @@ export interface WalletTransaction {
   amount: number; // positive = credit, negative = debit
 }
 
-export interface OrderLine {
-  title: string;
-  variant: string;
-  quantity: number;
-  price: number;
-}
-
-export type OrderStatus = "processing" | "confirmed" | "shipped" | "delivered" | "cancelled";
-
-export interface Order {
-  id: string;
-  number: string;
-  createdAt: string;
-  total: number;
-  currencyCode: string;
-  status: OrderStatus;
-  deliveryStatus: string;
-  lines: OrderLine[];
-}
+import type { AccountOrder as Order } from '@/features/orders/domain/order';
+export type { AccountOrder as Order, OrderLine, OrderStatus } from '@/features/orders/domain/order';
 
 export interface User {
   id: string;

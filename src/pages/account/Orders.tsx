@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, Loader2 } from "lucide-react";
 import AccountLayout from "@/components/account/AccountLayout";
 import { useAuthStore } from "@/stores/authStore";
-import { supabase } from "@/integrations/supabase/client";
+import { useAccountOrders } from "@/features/orders/presentation/useAccountOrders";
 import { cn } from "@/lib/utils";
 import { OrderDetailsDialog } from "@/components/shared/OrderDetailsDialog";
 
@@ -26,73 +27,11 @@ const statusTranslations: Record<string, string> = {
   payment_failed: "ناموفق",
 };
 
-interface OrderLine {
-  title: string;
-  variant: string;
-  quantity: number;
-  price: number;
-}
-
-interface Order {
-  id: string;
-  number: string;
-  createdAt: string;
-  total: number;
-  currencyCode: string;
-  status: string;
-  deliveryStatus: string;
-  lines: OrderLine[];
-}
-
 export default function Orders() {
   const user = useAuthStore((s) => s.user);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { orders, loading, error, retry } = useAccountOrders(user?.id);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-
-  useEffect(() => {
-    async function fetchOrders() {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from("orders")
-          .select(`
-            *,
-            order_items (*)
-          `)
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-
-        const formattedOrders = (data || []).map((o) => ({
-          id: o.id,
-          number: o.id.split("-")[0].toUpperCase(),
-          createdAt: o.created_at,
-          total: o.total_amount,
-          currencyCode: "IRR",
-          status: o.status,
-          deliveryStatus: statusTranslations[(o.status === "confirmed" ? "processing" : o.status).toLowerCase()] || (o.status === "confirmed" ? "Processing" : o.status),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          lines: ((o as any).order_items || []).map((line: any) => ({
-            title: line.title || "محصول",
-            variant: line.variant_title || "پیش‌فرض",
-            quantity: line.quantity,
-            price: line.price,
-          })),
-        }));
-
-        setOrders(formattedOrders);
-      } catch (err) {
-        console.error("Failed to fetch orders:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchOrders();
-  }, [user]);
 
   if (loading) {
     return (
@@ -111,7 +50,7 @@ export default function Orders() {
         onOpenChange={setIsDialogOpen}
         orderId={selectedOrderId}
       />
-        {orders.length === 0 ? (
+        {error ? <ReadFailure retry={retry} /> : orders.length === 0 ? (
           <div className="text-center py-14">
             <Package className="w-8 h-8 mx-auto text-muted-foreground" strokeWidth={1.25} />
             <p className="mt-6 text-lg font-light text-foreground">هنوز سفارشی وجود ندارد</p>

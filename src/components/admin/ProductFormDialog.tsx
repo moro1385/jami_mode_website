@@ -1,5 +1,9 @@
+import { useAuthStore } from '@/stores/authStore';
+import { useScopedAction } from '@/shared/presentation/useScopedAction';
+import { useScopedAsyncRead } from '@/shared/presentation/useScopedAsyncRead';
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
 import { errorMessage } from "@/lib/errors";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,17 +16,15 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import { adminProducts, type AdminProduct as Product } from "@/features/catalog/admin";
 import { toast } from "sonner";
 import { getBrandOptions } from "@/lib/brands";
 import { colorNames } from "@/lib/translations";
 import { slugify } from "@/lib/slugify";
-import type { Database } from "@/integrations/supabase/types";
 import { ProductImagesManager } from "./ProductImagesManager";
 import { fetchCategories } from "@/services/products";
 import { X } from "lucide-react";
 
-type Product = Database["public"]["Tables"]["products"]["Row"];
 type Category = { id: string; name: string; slug: string };
 
 const productSchema = z.object({
@@ -47,7 +49,7 @@ const productSchema = z.object({
 
 });
 
-type ProductFormValues = z.infer<typeof productSchema>;
+type ProductFormValues = z.infer<typeof productSchema> & Pick<Product, "name" | "slug">;
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -56,9 +58,17 @@ interface ProductFormDialogProps {
   onSuccess: () => void;
 }
 
-export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: ProductFormDialogProps) {
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [categories, setCategories] = useState<Category[]>([]);
+export function ProductFormDialog(props: ProductFormDialogProps) {
+ const ownerId = useAuthStore(state => state.user?.id);
+ if (!props.open) return null;
+ return <ProductFormDialogContent key={JSON.stringify([ownerId, props.product?.id])} {...props} ownerId={ownerId} />;
+}
+function ProductFormDialogContent({ open, onOpenChange, product, onSuccess, ownerId }: ProductFormDialogProps & { ownerId?: string }) {
+ const actions = useScopedAction(ownerId ? JSON.stringify([ownerId, product?.id]) : undefined);
+ const loadCategories = useCallback(() => fetchCategories(), []);
+ const categoryRead = useScopedAsyncRead(ownerId, loadCategories);
+ const categories = categoryRead.value ?? [];
+ const isSubmitting = actions.pending('save');
   const [tagInput, setTagInput] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
@@ -281,17 +291,6 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
   }, [department, category, form]);
 
 
-  useEffect(() => {
-    async function loadCategories() {
-      try {
-        const data = await fetchCategories();
-        setCategories(data);
-      } catch (err) {
-        console.error("Failed to load categories:", err);
-      }
-    }
-    loadCategories();
-  }, []);
 
   useEffect(() => {
     if (product) {
@@ -364,46 +363,14 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
   };
 
   async function onSubmit(values: ProductFormValues) {
-    setIsSubmitting(true);
-
-    // Safety net: slugify the final value before saving
-    const finalValues = {
-      ...values,
-      name: values.name,
-      slug: slugify(values.slug)
-    };
-
-    try {
-      if (product) {
-        const { error } = await supabase
-          .from("products")
-          .update(finalValues)
-          .eq("id", product.id);
-
-        if (error) throw error;
-        toast.success("محصول با موفقیت به‌روز شد");
-      } else {
-        const { error } = await supabase
-          .from("products")
-          .insert([finalValues]);
-
-        if (error) throw error;
-        toast.success("محصول با موفقیت ایجاد شد");
-      }
-
-      onSuccess();
-      onOpenChange(false);
-    } catch (error: unknown) {
-      console.error("Error saving product:", error);
-
-      // Catch duplicate slug error
-      if ((typeof error === "object" && error !== null && "code" in error && error.code === "23505") || errorMessage(error, "").includes("products_slug_key")) {
-        toast.error("این نامک (Slug) قبلاً برای محصول دیگری استفاده شده — لطفاً کمی تغییرش بده.");
-      } else {
-        toast.error(errorMessage(error, "ذخیره محصول با شکست مواجه شد"));
-      }
-    } finally {
-      setIsSubmitting(false);
+    const result = await actions.run('save', () => adminProducts.saveProduct(values, product?.id));
+    if (result.kind === 'success') {
+      toast.success(product ? 'محصول با موفقیت به‌روز شد' : 'محصول با موفقیت ایجاد شد');
+      onSuccess(); onOpenChange(false);
+    } else if (result.kind === 'failed') {
+      const error = result.error; console.error('Product save failed:', error);
+      if ((typeof error === 'object' && error !== null && 'code' in error && error.code === '23505') || errorMessage(error, '').includes('products_slug_key')) toast.error('این نامک (Slug) قبلاً برای محصول دیگری استفاده شده — لطفاً کمی تغییرش بده.');
+      else toast.error(errorMessage(error, 'ذخیره محصول با شکست مواجه شد'));
     }
   }
 
@@ -417,8 +384,10 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
           </DialogDescription>
         </DialogHeader>
 
+        {!!categoryRead.error && <ReadFailure retry={categoryRead.retry} message="دریافت دسته‌بندی‌ها انجام نشد." />}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <fieldset disabled={isSubmitting} className="contents">
             <FormField
               control={form.control}
               name="name"
@@ -880,6 +849,7 @@ export function ProductFormDialog({ open, onOpenChange, product, onSuccess }: Pr
                 {isSubmitting ? "در حال ذخیره..." : "ذخیره محصول"}
               </Button>
             </DialogFooter>
+            </fieldset>
           </form>
         </Form>
 

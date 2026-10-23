@@ -1,8 +1,9 @@
+import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadError';
 import { Link } from "react-router-dom";
 import { Loader2, ChevronRight, ChevronLeft } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
 import { useProducts, useFeaturedProducts, useNewestProducts } from "@/hooks/useProducts";
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useMemo } from "react";
 
 interface ProductRailProps {
   eyebrow: string;
@@ -30,9 +31,9 @@ export default function ProductRail({
   const newestResult = useNewestProducts(count);
 
   const result = type === 'featured' ? featuredResult : type === 'newest' ? newestResult : queryResult;
-  const { data: products, isLoading } = result;
+  const { data: products, isLoading, error, refetch, isFetching } = result;
 
-  const items = products ?? [];
+  const items = useMemo(() => products ?? [], [products]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(true);
@@ -117,7 +118,7 @@ export default function ProductRail({
           <div className="flex justify-center py-16">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
-        ) : items.length === 0 ? (
+        ) : error ? <CatalogReadError retry={refetch} busy={isFetching} /> : items.length === 0 ? (
           <p className="text-sm text-muted-foreground">محصولی یافت نشد</p>
         ) : (
           <div

@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {  ShoppingCart, Menu, X, Instagram, User, ChevronDown , Search, Mail } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
-import { supabase } from "@/integrations/supabase/client";
+import { useUnreadMessages } from "@/features/support/presentation/useUnreadMessages";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
@@ -66,33 +66,10 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [shopMenuOpen, setShopMenuOpen] = useState(false);
   const [mobileShopMenuOpen, setMobileShopMenuOpen] = useState(false);
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const unreadMessageCount = useUnreadMessages(isAuthenticated ? session?.userId : undefined);
 
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
-
-  useEffect(() => {
-    async function fetchUnreadCount() {
-      if (!isAuthenticated || !session?.userId) return;
-      try {
-        const { count, error } = await supabase
-          .from("user_messages")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", session.userId)
-          .eq("is_read", false);
-
-        if (!error && count !== null) {
-          setUnreadMessageCount(count);
-        }
-      } catch (err) {
-        console.error("Failed to fetch unread message count:", err);
-      }
-    }
-
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 60000);
-    return () => clearInterval(interval);
-  }, [isAuthenticated, session?.userId]);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();

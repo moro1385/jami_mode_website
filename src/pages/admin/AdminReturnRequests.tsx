@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { useAuthStore } from '@/stores/authStore';
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { useAdminReturns } from '@/features/returns/presentation/useAdminReturns';
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,29 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 
 import PrivateReturnImage from '@/components/returns/PrivateReturnImage';
-
-type ReturnRequest = {
-  id: string;
-  user_id: string;
-  order_id: string;
-  phone: string;
-  description: string;
-  image_urls: string[];
-  status: string;
-  admin_note: string | null;
-  created_at: string;
-  orders: {
-    id: string;
-  };
-  profiles: {
-    first_name: string | null;
-    last_name: string | null;
-    phone: string | null;
-  };
-};
 
 const statusTranslations: Record<string, string> = {
   pending: "در انتظار بررسی",
@@ -55,86 +35,8 @@ const statusColors: Record<string, string> = {
 };
 
 export default function AdminReturnRequests() {
-  const [requests, setRequests] = useState<ReturnRequest[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchRequests();
-  }, []);
-
-  const fetchRequests = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("return_requests")
-        .select(`
-          *,
-          orders (id)
-        `)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      const reqs = data || [];
-      if (reqs.length === 0) {
-        setRequests([]);
-        return;
-      }
-
-      const uniqueUserIds = Array.from(new Set(reqs.map(r => r.user_id)));
-
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, phone")
-        .in("id", uniqueUserIds);
-
-      if (profilesError) throw profilesError;
-
-      type ProfileData = { id: string, first_name: string | null, last_name: string | null, phone: string | null };
-      const profilesMap = (profilesData || []).reduce((acc: Record<string, ProfileData>, p) => {
-        acc[p.id] = p as ProfileData;
-        return acc;
-      }, {});
-
-      const mergedRequests = reqs.map((req) => ({
-        ...req,
-        profiles: profilesMap[req.user_id] || { first_name: null, last_name: null, phone: null }
-      }));
-
-      setRequests(mergedRequests as ReturnRequest[]);
-    } catch (error: unknown) {
-      toast.error("خطا در دریافت لیست درخواست‌های مرجوعی");
-      if (error instanceof Error) {
-        console.error("Error fetching return requests:", error.message);
-      } else {
-        console.error("Error fetching return requests:", error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const updateRequestStatus = async (id: string, newStatus: string) => {
-    try {
-      const { data, error } = await supabase
-        .from("return_requests")
-        .update({ status: newStatus })
-        .eq("id", id).select("id,status").maybeSingle();
-
-      if (error || !data || data.status !== newStatus) throw new Error("Status was not saved");
-
-      toast.success("وضعیت درخواست با موفقیت تغییر کرد");
-      setRequests((prev) =>
-        prev.map((req) => (req.id === id ? { ...req, status: newStatus } : req))
-      );
-    } catch (error: unknown) {
-      toast.error("خطا در تغییر وضعیت درخواست");
-      if (error instanceof Error) {
-        console.error("Error updating return request:", error.message);
-      } else {
-        console.error("Error updating return request:", error);
-      }
-    }
-  };
+  const ownerId = useAuthStore(state => state.user?.id);
+  const { requests, loading, error, retry, pending, changeStatus: updateRequestStatus } = useAdminReturns(ownerId);
 
   return (
     <div className="space-y-6">
@@ -167,7 +69,7 @@ export default function AdminReturnRequests() {
                     در حال بارگذاری...
                   </td>
                 </tr>
-              ) : requests.length === 0 ? (
+              ) : error ? (<tr><td colSpan={8}><ReadFailure retry={retry} /></td></tr>) : requests.length === 0 ? (
                 <tr>
                   <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     هیچ درخواست مرجوعی یافت نشد
@@ -259,6 +161,7 @@ export default function AdminReturnRequests() {
                       <td className="px-4 py-4 whitespace-nowrap">
                         <Select
                           value={req.status}
+                          disabled={pending(req.id)}
                           onValueChange={(val) => updateRequestStatus(req.id, val)}
                         >
                           <SelectTrigger className="h-8 text-xs w-[130px]">

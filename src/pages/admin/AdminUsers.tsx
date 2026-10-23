@@ -1,44 +1,17 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useCallback } from 'react';
+import { useAuthStore } from '@/stores/authStore';
+import { useScopedAsyncRead } from '@/shared/presentation/useScopedAsyncRead';
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
+import { adminCustomers, type CustomerSummary as Profile } from "@/features/customers/admin";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 import { format } from "date-fns";
 
-type Profile = {
-  id: string;
-  created_at: string;
-  first_name: string | null;
-  last_name: string | null;
-  phone: string | null;
-};
-
 export default function AdminUsers() {
-  const [users, setUsers] = useState<Profile[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  async function fetchUsers() {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-      setUsers(data as Profile[]);
-    } catch (err: unknown) {
-      console.error("Error fetching users:", err);
-      setError((err instanceof Error ? err.message : "An error occurred") || "بارگیری کاربران با شکست مواجه شد");
-    } finally {
-      setIsLoading(false);
-    }
-  }
+  const ownerId = useAuthStore(state => state.user?.id);
+  const load = useCallback(() => adminCustomers.list(), []);
+  const { value, loading: isLoading, error, retry } = useScopedAsyncRead(ownerId, load);
+  const users: Profile[] = value ?? [];
 
   return (
     <div className="space-y-6">
@@ -55,9 +28,7 @@ export default function AdminUsers() {
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
-          <div className="p-8 text-center text-destructive">
-            {error}
-          </div>
+          <ReadFailure retry={retry} message="بارگیری کاربران با شکست مواجه شد." />
         ) : users.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
             هیچ کاربری پیدا نشد.

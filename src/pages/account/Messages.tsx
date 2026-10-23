@@ -1,72 +1,13 @@
-import { useEffect, useState } from "react";
+import { ReadFailure } from '@/shared/presentation/ReadFailure';
 import { Mail, Loader2 } from "lucide-react";
 import AccountLayout from "@/components/account/AccountLayout";
 import { useAuthStore } from "@/stores/authStore";
-import { supabase } from "@/integrations/supabase/client";
+import { useAccountMessages } from "@/features/support/presentation/useAccountMessages";
 import { cn } from "@/lib/utils";
-
-interface UserMessage {
-  id: string;
-  title: string;
-  body: string;
-  is_read: boolean;
-  created_at: string;
-}
 
 export default function Messages() {
   const user = useAuthStore((s) => s.user);
-  const [messages, setMessages] = useState<UserMessage[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchMessages() {
-      if (!user) return;
-      try {
-        const { data, error } = await supabase
-          .from("user_messages")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false });
-
-        if (error) throw error;
-        setMessages(data || []);
-      } catch (err) {
-        console.error("Failed to fetch messages:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchMessages();
-  }, [user]);
-
-  const handleMarkAsRead = async (message: UserMessage) => {
-    if (message.is_read || !user) return;
-
-    // Optimistically update UI
-    setMessages((prev) =>
-      prev.map((m) => (m.id === message.id ? { ...m, is_read: true } : m))
-    );
-
-    try {
-      const { error } = await supabase
-        .from("user_messages")
-        .update({ is_read: true })
-        .eq("id", message.id)
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      // Dispatch event so Header updates instantly
-      window.dispatchEvent(new Event("messages_read_updated"));
-    } catch (err) {
-      console.error("Failed to mark message as read:", err);
-      // Revert if error
-      setMessages((prev) =>
-        prev.map((m) => (m.id === message.id ? { ...m, is_read: false } : m))
-      );
-    }
-  };
+  const { messages, loading, error, retry, markAsRead: handleMarkAsRead } = useAccountMessages(user?.id);
 
   if (loading) {
     return (
@@ -80,7 +21,7 @@ export default function Messages() {
 
   return (
     <AccountLayout title="پیام‌ها" description="پیام‌ها و پاسخ‌های تیم پشتیبانی را اینجا مشاهده کنید.">
-      {messages.length === 0 ? (
+      {error ? <ReadFailure retry={retry} /> : messages.length === 0 ? (
         <div className="text-center py-14">
           <Mail className="w-8 h-8 mx-auto text-muted-foreground" strokeWidth={1.25} />
           <p className="mt-6 text-lg font-light text-foreground">پیامی وجود ندارد</p>

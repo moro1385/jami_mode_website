@@ -1,26 +1,22 @@
+import { useRequestScope } from '@/shared/presentation/useRequestScope';
 import { useState } from "react";
 import { Check, Loader2, MapPin, Pencil, Plus, Star, Trash2, X } from "lucide-react";
 import AccountLayout from "@/components/account/AccountLayout";
 import FormField from "@/components/auth/FormField";
 import { useAuthStore } from "@/stores/authStore";
 import type { Address } from "@/types/auth";
-import { formatPhone, isValidPhone, normalizePhone } from "@/lib/phone";
+import { formatPhone } from "@/lib/phone";
+import { emptyAddressForm as emptyForm, validateAddressForm, addressFormInput } from "@/features/account/domain/forms";
 import { toast } from "sonner";
 
-const emptyForm = {
-  label: "",
-  recipient: "",
-  phone: "",
-  country: "",
-  city: "",
-  line1: "",
-  line2: "",
-  postalCode: "",
-  isDefault: false,
-};
-
 export default function Addresses() {
+  const ownerId = useAuthStore(state => state.user?.id);
+  return <AddressesContent key={ownerId ?? "signed-out"} />;
+}
+
+function AddressesContent() {
   const user = useAuthStore((s) => s.user);
+  const captureScope = useRequestScope(user?.id);
   const upsertAddress = useAuthStore((s) => s.upsertAddress);
   const deleteAddress = useAuthStore((s) => s.deleteAddress);
   const setDefaultAddress = useAuthStore((s) => s.setDefaultAddress);
@@ -49,42 +45,44 @@ export default function Addresses() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    const next: Record<string, string> = {};
-    if (!form.label.trim()) next.label = "برای این آدرس یک نام انتخاب کنید (خانه، محل کار…).";
-    if (!form.recipient.trim()) next.recipient = "نام گیرنده الزامی است.";
-    if (!form.phone.trim()) next.phone = "شماره تماس الزامی است.";
-    else if (!isValidPhone(form.phone)) next.phone = "یک شماره موبایل معتبر وارد کنید.";
-    if (!form.country.trim()) next.country = "کشور الزامی است.";
-    if (!form.city.trim()) next.city = "شهر الزامی است.";
-    if (!form.line1.trim()) next.line1 = "آدرس خیابان الزامی است.";
-    if (!form.postalCode.trim()) next.postalCode = "کد پستی الزامی است.";
+    const isCurrent=captureScope(); if(!isCurrent())return;
+    const next = validateAddressForm(form);
     setErrors(next);
     if (Object.keys(next).length) return;
 
     setBusy(true);
     try {
-      await upsertAddress({
-        ...form,
-        phone: normalizePhone(form.phone),
-        id: editing === "new" ? undefined : (editing as string),
-      });
+      await upsertAddress(addressFormInput(form, editing));
+      if(!isCurrent())return;
       toast.success(editing === "new" ? "آدرس اضافه شد" : "آدرس به‌روز شد");
       setEditing(null);
     } catch {
-      toast.error("ذخیره این آدرس انجام نشد.");
+      if(isCurrent())toast.error("ذخیره این آدرس انجام نشد.");
     } finally {
-      setBusy(false);
+      if(isCurrent())setBusy(false);
     }
   };
 
   const handleDelete = async (id: string) => {
+    const isCurrent=captureScope(); if(!isCurrent())return;
     setBusy(true);
     try {
       await deleteAddress(id);
+      if(!isCurrent())return;
       toast.success("آدرس حذف شد");
+    } catch {
+      if(isCurrent())toast.error("حذف این آدرس انجام نشد.");
     } finally {
-      setBusy(false);
+      if(isCurrent())setBusy(false);
     }
+  };
+
+  const handleDefault = async (id: string) => {
+    const isCurrent=captureScope(); if(!isCurrent())return;
+    setBusy(true);
+    try { await setDefaultAddress(id); }
+    catch { if(isCurrent())toast.error("تغییر آدرس پیش‌فرض انجام نشد."); }
+    finally { if(isCurrent())setBusy(false); }
   };
 
   return (
@@ -177,7 +175,8 @@ export default function Addresses() {
                 <div className="flex items-center gap-3">
                   {!address.isDefault && (
                     <button
-                      onClick={() => setDefaultAddress(address.id)}
+                      onClick={() => handleDefault(address.id)}
+                      disabled={busy}
                       aria-label="Set as default"
                       className="text-muted-foreground hover:text-accent transition-colors"
                     >
@@ -186,14 +185,16 @@ export default function Addresses() {
                   )}
                   <button
                     onClick={() => openEdit(address)}
-                    aria-label="Edit address"
+                    disabled={busy}
+                      aria-label="Edit address"
                     className="text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => handleDelete(address.id)}
-                    aria-label="Delete address"
+                    disabled={busy}
+                      aria-label="Delete address"
                     className="text-muted-foreground hover:text-destructive transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
