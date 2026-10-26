@@ -49,10 +49,11 @@ async function fixtures(page: Page, options: Options = {}, sharedCart?: SharedCa
   }, { user, item, address, session, signedIn: options.signedIn !== false, reuseStorage: options.reuseStorage === true });
   await page.route('**/*', async route => {
     const req = route.request(), url = new URL(req.url());
+    const relayed=url.pathname.startsWith('/api/supabase/');if(relayed)url.pathname=url.pathname.slice('/api/supabase'.length);
     const local = url.origin === 'http://127.0.0.1:4179';
     const synthetic = url.hostname === 'cifhcrlmjnsxpkhyloen.supabase.co';
     const reply = (body: unknown, status = 200, headers: Record<string, string> = {}) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body), headers });
-    if (local && !url.pathname.startsWith('/api/')) { await route.continue(); return; }
+    if (local && !relayed && !url.pathname.startsWith('/api/')) { await route.continue(); return; }
     if (!local && !synthetic) { blocked.push(url.hostname); await route.abort(); return; }
     const body = req.postData() ? JSON.parse(req.postData()!) : null;
     calls.push({ path: url.pathname, body });
@@ -910,4 +911,14 @@ test('admin inventory distinguishes missing variants from zero stock and ERP sho
  await page.route('**/api/admin/erp/list?*',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({rows:[{id:orderId,status:'processing',paymentState:'paid',amount:'5900000',createdAt:'2026-10-26T12:00:00.000000Z'}],hasMore:false,nextCursor:null})}));
  await page.setViewportSize({width:1440,height:1000});await page.goto('/admin/erp');await expect(page.getByRole('table')).toBeVisible();await expect(page.getByText('۵٬۹۰۰٬۰۰۰ ریال',{exact:true})).toBeVisible();
  await page.screenshot({path:'.phase3-e2e-artifacts/admin-erp-records-design.png',fullPage:false});
+});
+
+test('Supabase login, catalog and stored images use only the site origin',async({page})=>{
+ const direct:string[]=[],relayed:string[]=[];page.on('request',req=>{const u=new URL(req.url());if(u.hostname.endsWith('.supabase.co'))direct.push(u.pathname);if(u.pathname.startsWith('/api/supabase/'))relayed.push(u.pathname);});
+ await fixtures(page,{signedIn:false});
+ await page.goto('/signin');await page.getByLabel('شماره موبایل',{exact:true}).fill('09110000001');await page.getByLabel('رمز عبور',{exact:true}).fill('synthetic-password');await page.getByRole('button',{name:'ورود',exact:true}).click();await expect(page.getByRole('heading',{name:'اطلاعات شخصی'})).toBeVisible();
+ await page.route('**/rest/v1/products*',route=>route.fulfill({status:200,contentType:'application/json',headers:{'content-range':'0-0/1','access-control-expose-headers':'content-range'},body:JSON.stringify([{id:productId,name:'تصویر مسیر داخلی',slug:'relay-image',price:7000,is_active:true,is_out_of_stock:false,is_featured:true,is_new:true,images:['https://cifhcrlmjnsxpkhyloen.supabase.co/storage/v1/object/public/product-images/relay.png'],created_at:user.createdAt,tags:[],sizes:['M'],colors:[],brand:[],type:[],categories:null,product_images:[],product_variants:[]}])}));
+ await page.route('**/storage/v1/object/public/product-images/relay.png',route=>route.fulfill({status:200,contentType:'image/png',body:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=','base64')}));
+ await page.goto('/shop');const image=page.getByRole('img',{name:'تصویر مسیر داخلی',exact:true}).first();await expect(image).toBeVisible();await expect(image).toHaveAttribute('src','/api/supabase/storage/v1/object/public/product-images/relay.png');await expect.poll(()=>image.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
+ expect(relayed).toContain('/api/supabase/auth/v1/token');expect(relayed.some(p=>p.startsWith('/api/supabase/rest/v1/'))).toBe(true);expect(direct).toEqual([]);
 });

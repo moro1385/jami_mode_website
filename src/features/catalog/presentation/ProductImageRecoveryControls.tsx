@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useCallback, useState } from 'react';
 import type { AdminProduct } from '../domain/adminProducts';
 import { adminProductImageRecovery } from '../admin';
@@ -9,8 +10,8 @@ import type { ProductGallerySnapshot } from '../application/productImageRecovery
 function GalleryPhotos({ gallery }: { gallery: ProductGallerySnapshot }) {
  const mainActive = gallery.main.length > 0;
  return <div className="space-y-2"><p>{mainActive ? 'نمایش فعلی از فهرست اصلی است؛ گالری قدیمی زیر در اولویت نمایش نیست.' : 'فهرست اصلی خالی است؛ نمایش فعلی از گالری قدیمی است.'}</p>
-  <p>فهرست اصلی: {gallery.main.length} عکس</p><div className="flex flex-wrap gap-2">{gallery.main.map((url,index)=><img key={index} src={url} alt={'اصلی '+(index+1)} loading="lazy" referrerPolicy="no-referrer" className="w-20 h-20 object-cover rounded"/>)}</div>
-  <p>گالری قدیمی: {gallery.legacy.length} عکس</p><div className="flex flex-wrap gap-2">{gallery.legacy.map((image,index)=><img key={image.id} src={image.url} alt={'قدیمی '+(index+1)} loading="lazy" referrerPolicy="no-referrer" className="w-20 h-20 object-cover rounded"/>)}</div>
+  <p>فهرست اصلی: {gallery.main.length} عکس</p><div className="flex flex-wrap gap-2">{gallery.main.map((url,index)=><img key={index} src={supabaseAssetUrl(url)} alt={'اصلی '+(index+1)} loading="lazy" referrerPolicy="no-referrer" className="w-20 h-20 object-cover rounded"/>)}</div>
+  <p>گالری قدیمی: {gallery.legacy.length} عکس</p><div className="flex flex-wrap gap-2">{gallery.legacy.map((image,index)=><img key={image.id} src={supabaseAssetUrl(image.url)} alt={'قدیمی '+(index+1)} loading="lazy" referrerPolicy="no-referrer" className="w-20 h-20 object-cover rounded"/>)}</div>
   {!gallery.main.length && !gallery.legacy.length && <p>عکسی در این دو فهرست ثبت نشده است.</p>}
  </div>;
 }

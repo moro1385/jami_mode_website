@@ -1,4 +1,5 @@
 import express from "express";
+import {createSupabaseRelay} from "./server/supabase-relay.js";
 import { productionMaintenanceHealth, maintenanceHealthRouter, startMaintenanceWatch } from "./server/maintenance-health.js";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -14,6 +15,8 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', trustedProxyHops(process.env.JAMI_TRUST_PROXY_HOPS));
 app.use(securityHeaders);
+// Raw relay bodies must be handled before the ordinary JSON/form parsers.
+app.use("/api/supabase",createSupabaseRelay());
 app.use(['/api/bitpay', '/api/wallet', '/api/admin/inventory', '/api/admin/erp'], createRateLimiter(), express.json({ limit: '32kb' }), express.urlencoded({ extended: false, limit: '32kb' }));
 app.use(express.json({ limit: '100kb' }));
 app.use(express.urlencoded({ extended: true, limit: '100kb' }));

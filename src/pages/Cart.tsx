@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { CartSyncNotice } from '@/features/cart/presentation/CartSyncNotice';
 import { Link, useNavigate } from "react-router-dom";
 import { ExternalLink, Loader2, X } from "lucide-react";
@@ -52,7 +53,7 @@ const navigate = useNavigate();
         {items.map((item) => (
           <div key={item.id} className="flex gap-6 border-b border-border pb-8">
             <img
-              src={item.image}
+              src={supabaseAssetUrl(item.image)}
               alt={item.productTitle}
               className="w-24 h-24 object-cover bg-[hsl(var(--warm-bg))] rounded-2xl"
               loading="lazy"

@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { Link } from "react-router-dom";
 import { collections } from "@/data/collections";
 import { getCollectionImage } from "@/data/collectionImages";
@@ -58,7 +59,7 @@ export default function CollectionCardsRow() {
             >
               <div className="overflow-hidden rounded-2xl">
 <img
-  src={card.gridImage}
+  src={supabaseAssetUrl(card.gridImage)}
   onError={(e) => {
     if (card.image && e.currentTarget.src !== card.image) {
       e.currentTarget.src = card.image;

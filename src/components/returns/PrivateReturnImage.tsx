@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useEffect, useState } from 'react';
 import { signedReturnImage } from '@/lib/returnImages';
 import { useAuthStore } from '@/stores/authStore';
@@ -23,6 +24,6 @@ export default function PrivateReturnImage({ reference, alt, className, openable
   // Do not render the previous account/reference while its effect is cleaning up.
   const url = signed?.reference === reference && signed.userId === userId ? signed.url : null;
   if (!url) return <span className={className}>تصویر در دسترس نیست</span>;
-  const image = <img src={url} alt={alt} className={className} loading="lazy" referrerPolicy="no-referrer" onError={() => setSigned(null)} />;
-  return openable ? <a href={url} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{image}</a> : image;
+  const image = <img src={supabaseAssetUrl(url)} alt={alt} className={className} loading="lazy" referrerPolicy="no-referrer" onError={() => setSigned(null)} />;
+  return openable ? <a href={supabaseAssetUrl(url)} target="_blank" rel="noopener noreferrer" referrerPolicy="no-referrer">{image}</a> : image;
 }

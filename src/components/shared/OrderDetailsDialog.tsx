@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
 import { useAuthStore } from "@/stores/authStore";
 import { useOrderDetails } from "@/features/orders/presentation/useOrderDetails";
@@ -80,7 +81,7 @@ export function OrderDetailsDialog({ open, onOpenChange, orderId }: OrderDetails
                     <div key={item.id} className="flex justify-between items-start text-sm">
                       <div className="flex gap-3">
                         {item.image_url ? (
-                          <img src={item.image_url} alt={item.title || "محصول"} className="w-12 h-12 object-cover rounded-sm bg-muted" loading="lazy" width={48} height={48} />
+                          <img src={supabaseAssetUrl(item.image_url)} alt={item.title || "محصول"} className="w-12 h-12 object-cover rounded-sm bg-muted" loading="lazy" width={48} height={48} />
                         ) : (
                           <div className="w-12 h-12 rounded-sm bg-muted flex items-center justify-center text-xs text-muted-foreground">بدون تصویر</div>
                         )}

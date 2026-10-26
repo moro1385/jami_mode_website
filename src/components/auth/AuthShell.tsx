@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import setsImg from "@/assets/collections/sets.jpg";
@@ -15,7 +16,7 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
     <div className="min-h-[calc(100vh-104px)] grid lg:grid-cols-2 bg-[hsl(var(--warm-bg))]">
       <aside className="relative hidden lg:block overflow-hidden">
         <img
-          src={setsImg}
+          src={supabaseAssetUrl(setsImg)}
           alt="جامی مد، پوشاک روزمره"
           className="absolute inset-0 w-full h-full object-cover"
           loading="lazy"

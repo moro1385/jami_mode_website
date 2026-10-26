@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import {AdminPageHeader,AdminStat,AdminBadge} from '@/components/admin/AdminPrimitives';
 import { categoryFilterLabel } from '@/features/catalog/domain/productCategories';
 import { filterAdminProducts, MAX_PRODUCT_BATCH, type ProductStatusFilter } from '@/features/catalog/domain/productManagement';
@@ -175,7 +176,7 @@ function AdminProductsContent({ ownerId }: { ownerId?: string }) {
               {visible.map((product) => (
                 <TableRow key={product.id}>
                   <TableCell><input type="checkbox" aria-label={`انتخاب ${product.name}`} checked={selectedIds.includes(product.id)} disabled={busy || (!selectedIds.includes(product.id) && selectedIds.length >= MAX_PRODUCT_BATCH)} onChange={() => toggle(product.id)} /></TableCell>
-                  <TableCell><div className="admin-product-name">{product.images?.[0]?<img src={product.images[0]} alt="" loading="lazy" referrerPolicy="no-referrer"/>:<span className="admin-product-placeholder"><Package aria-hidden="true"/></span>}<div><strong>{product.name}</strong><small dir="auto">{product.slug}</small></div></div></TableCell>
+                  <TableCell><div className="admin-product-name">{product.images?.[0]?<img src={supabaseAssetUrl(product.images[0])} alt="" loading="lazy" referrerPolicy="no-referrer"/>:<span className="admin-product-placeholder"><Package aria-hidden="true"/></span>}<div><strong>{product.name}</strong><small dir="auto">{product.slug}</small></div></div></TableCell>
                   <TableCell>{categoryFilterLabel(product)}</TableCell>
                   <EditablePriceCell product={product} busy={pending(product.id)} save={changePrice} />
                   <TableCell>

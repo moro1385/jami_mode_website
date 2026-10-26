@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useScopedAsyncRead } from '@/shared/presentation/useScopedAsyncRead';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
 import { useRequestScope } from '@/shared/presentation/useRequestScope';
@@ -206,7 +207,7 @@ function ReturnRequestContent() {
                 {files.map((file, index) => (
                   <div key={index} className="relative w-20 h-20 rounded-xl overflow-hidden border border-border group">
                     <img
-                      src={URL.createObjectURL(file)}
+                      src={supabaseAssetUrl(URL.createObjectURL(file))}
                       alt={`Preview ${index}`}
                       className="w-full h-full object-cover"
                       loading="lazy"

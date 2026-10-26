@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useState } from 'react';
 import type { AdminProduct } from '../domain/adminProducts';
 import { existingImageList, imagesEqual, validateImageBatch, type ProductImageTarget } from '../domain/productImageBatches';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 type ImageDraft = { expected: string[]; order: number[] };
 function freshDraft(product: AdminProduct): ImageDraft { const expected = existingImageList(product.images); return { expected, order: expected.map((_, index) => index) }; }
-function ImageStrip({ urls, label }: { urls: string[]; label: string }) { return <div className="flex flex-wrap gap-2" aria-label={label}>{urls.map((url, index) => <div key={index} className="text-xs text-center"><img src={url} alt={label + ' ' + (index + 1)} loading="lazy" referrerPolicy="no-referrer" className="w-16 h-16 object-cover rounded" /><span>{index === 0 ? 'تصویر اصلی' : index + 1}</span></div>)}</div>; }
+function ImageStrip({ urls, label }: { urls: string[]; label: string }) { return <div className="flex flex-wrap gap-2" aria-label={label}>{urls.map((url, index) => <div key={index} className="text-xs text-center"><img src={supabaseAssetUrl(url)} alt={label + ' ' + (index + 1)} loading="lazy" referrerPolicy="no-referrer" className="w-16 h-16 object-cover rounded" /><span>{index === 0 ? 'تصویر اصلی' : index + 1}</span></div>)}</div>; }
 export function ProductImageBatchControls({ selected, busy, submit }: { selected: AdminProduct[]; busy: boolean; submit(targets: ProductImageTarget[]): Promise<ProductBatchReport | undefined> }) {
  const [expanded, setExpanded] = useState(false), [drafts, setDrafts] = useState<Record<string, ImageDraft>>({}), [error, setError] = useState('');
  const [preview, setPreview] = useState<{ targets: ProductImageTarget[]; names: string[] }>();
@@ -30,7 +31,7 @@ export function ProductImageBatchControls({ selected, busy, submit }: { selected
     return <fieldset key={product.id} aria-label={'تصاویر ' + product.name} className="border rounded p-3 space-y-2"><legend>{product.name}</legend>
      {stale && <p role="alert">فهرست عکس‌ها تغییر کرده؛ این محصول را بازنشانی کنید.</p>}
      {!draft.expected.length && <p>عکس قابل ویرایش گروهی ندارد؛ عکس‌های قدیمی یا تازه را از ویرایش تکی بررسی کنید.</p>}
-     <div className="flex flex-wrap gap-3">{draft.order.map((source, position) => <div key={source} className="border rounded p-2 space-y-1 text-xs"><img src={draft.expected[source]} alt={product.name + ' عکس ' + (source + 1)} loading="lazy" referrerPolicy="no-referrer" className="w-20 h-20 object-cover rounded" /><p>{position === 0 ? 'تصویر اصلی' : 'عکس ' + (position + 1)}</p>
+     <div className="flex flex-wrap gap-3">{draft.order.map((source, position) => <div key={source} className="border rounded p-2 space-y-1 text-xs"><img src={supabaseAssetUrl(draft.expected[source])} alt={product.name + ' عکس ' + (source + 1)} loading="lazy" referrerPolicy="no-referrer" className="w-20 h-20 object-cover rounded" /><p>{position === 0 ? 'تصویر اصلی' : 'عکس ' + (position + 1)}</p>
       <div className="flex flex-wrap gap-1"><button type="button" className="underline" aria-label={`اصلی‌کردن عکس ${source + 1} ${product.name}`} disabled={busy || stale || position === 0 || !!preview} onClick={() => edit(product, order => [order[position], ...order.filter((_, index) => index !== position)])}>اصلی</button>
       <button type="button" className="underline" aria-label={`قبلی عکس ${source + 1} ${product.name}`} disabled={busy || stale || position === 0 || !!preview} onClick={() => edit(product, order => { [order[position - 1], order[position]] = [order[position], order[position - 1]]; return order; })}>قبلی</button>
       <button type="button" className="underline" aria-label={`بعدی عکس ${source + 1} ${product.name}`} disabled={busy || stale || position === draft.order.length - 1 || !!preview} onClick={() => edit(product, order => { [order[position + 1], order[position]] = [order[position], order[position + 1]]; return order; })}>بعدی</button>

@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import useEmblaCarousel from "embla-carousel-react";
@@ -46,7 +47,7 @@ export default function CollectionSlider() {
               <div key={collection.handle} className="relative flex-[0_0_100%] min-w-0">
                 <div className="relative h-[80vh] min-h-[520px] w-full">
                   <img
-                    src={collection.image}
+                    src={supabaseAssetUrl(collection.image)}
                     alt={collection.name}
                     width={1920}
                     height={1080}

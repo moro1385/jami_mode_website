@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useAuthStore } from '@/stores/authStore';
 import { useProductImages } from '@/features/catalog/presentation/useProductImages';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
@@ -69,7 +70,7 @@ function ProductImagesManagerContent({ productId, ownerId }: ProductImagesManage
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {images.map((img) => (
             <div key={img.id} className="relative group rounded-md overflow-hidden border">
-              <img src={img.image_url} alt={img.alt_text || "Product image"} className="w-full aspect-square object-cover" loading="lazy" />
+              <img src={supabaseAssetUrl(img.image_url)} alt={img.alt_text || "Product image"} className="w-full aspect-square object-cover" loading="lazy" />
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <Button
                   variant="destructive"

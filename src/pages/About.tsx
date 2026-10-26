@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import aboutBg from "@/assets/about-bg.jpg";
 import { Instagram, Send } from "lucide-react";
 import SEO from "@/components/SEO";
@@ -27,7 +28,7 @@ export default function About() {
       {/* Full-width image */}
       <div className="w-full mb-24">
         <img
-          src={aboutBg}
+          src={supabaseAssetUrl(aboutBg)}
           alt="فروشگاه جامی مد"
           className="w-full h-auto object-cover rounded-2xl shadow-xs"
           loading="lazy"

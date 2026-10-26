@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { useEffect, useRef, useState } from 'react';
 import type { AdminProduct } from '../domain/adminProducts';
 import { existingImageList, imagesEqual } from '../domain/productImageBatches';
@@ -8,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 function LocalPhoto({ file }: { file: File }) {
  const [url, setUrl] = useState('');
  useEffect(() => { const next = URL.createObjectURL(file); setUrl(next); return () => URL.revokeObjectURL(next); }, [file]);
- return <figure className="max-w-32"><img src={url || undefined} alt={file.name} className="w-24 h-24 rounded object-cover" /><figcaption className="break-all text-xs">{file.name}</figcaption></figure>;
+ return <figure className="max-w-32"><img src={supabaseAssetUrl(url || undefined)} alt={file.name} className="w-24 h-24 rounded object-cover" /><figcaption className="break-all text-xs">{file.name}</figcaption></figure>;
 }
 type Draft = ProductImageUploadTarget;
 export function ProductImageUploadControls({ selected, busy, submit }: { selected: AdminProduct[]; busy: boolean; submit(targets: ProductImageUploadTarget[]): Promise<ProductImageUploadReport | undefined> }) {

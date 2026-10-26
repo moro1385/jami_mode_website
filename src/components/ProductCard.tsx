@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { Link } from "react-router-dom";
 import { formatPrice, productImage, type CatalogProduct } from "@/services/products";
 import { categoryNames } from "@/lib/translations";
@@ -17,7 +18,7 @@ export default function ProductCard({ product }: { product: CatalogProduct }) {
           </span>
         )}
         <img
-          src={productImage(product)}
+          src={supabaseAssetUrl(productImage(product))}
           alt={title}
           className={cn("w-full aspect-[4/5] object-cover transition-transform duration-500 group-hover:scale-105", !inStock && "grayscale opacity-75")}
           loading="lazy"
@@ -33,7 +34,7 @@ export default function ProductCard({ product }: { product: CatalogProduct }) {
             return (
               <div key={index} className="relative w-12 h-12 rounded-lg overflow-hidden bg-[hsl(var(--warm-bg))] border border-border/50">
                 <img
-                  src={edge.node?.url}
+                  src={supabaseAssetUrl(edge.node?.url)}
                   alt={`${title} تصویر ${index + 1}`}
                   className="w-full h-full object-cover"
                   loading="lazy"

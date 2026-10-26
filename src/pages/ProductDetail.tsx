@@ -1,3 +1,4 @@
+import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadError';
 import { useMemo, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
@@ -131,7 +132,7 @@ selectedSize: activeOptions["Size"] ?? null,
                   </span>
                 )}
                 <img
-                  src={product.node.images.edges[0]?.node.url || "/placeholder.svg"}
+                  src={supabaseAssetUrl(product.node.images.edges[0]?.node.url || "/placeholder.svg")}
                   alt={product.node.title}
                   className={cn("w-full h-full object-cover absolute top-0 left-0 hover:scale-110 transition-transform duration-500", isSoldOut && "grayscale opacity-75")}
                   id="main-product-image"
@@ -150,7 +151,7 @@ selectedSize: activeOptions["Size"] ?? null,
                       if (mainImg) (mainImg as HTMLImageElement).src = img.node?.url;
                     }}
                   >
-                    <img src={img.node?.url} className="w-full h-full object-cover" alt={`${product.node.title} - تصویر ${idx + 1}`} loading="lazy" />
+                    <img src={supabaseAssetUrl(img.node?.url)} className="w-full h-full object-cover" alt={`${product.node.title} - تصویر ${idx + 1}`} loading="lazy" />
                   </button>
                 ))}
               </div>

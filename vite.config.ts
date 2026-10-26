@@ -1,4 +1,6 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
+import express from "express";
+import {createSupabaseRelay} from "./server/supabase-relay.js";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import { publicSupabaseConfig, testHtml } from "./config/supabase-public.js";
@@ -25,7 +27,13 @@ export default defineConfig(({ mode }) => {
       overlay: false,
     },
   },
-  plugins: [{ name: "test-network-isolation", transformIndexHtml: (html) => testHtml(html, localTest) }, react()].filter(Boolean),
+  plugins: [{name:"supabase-same-origin-relay",configureServer(server){
+    if(localTest)return;
+    const env=loadEnv(mode,process.cwd(),'VITE_');
+    const config=publicSupabaseConfig({MODE:mode,VITE_SUPABASE_URL:env.VITE_SUPABASE_URL,VITE_SUPABASE_PUBLISHABLE_KEY:env.VITE_SUPABASE_PUBLISHABLE_KEY});
+    const relay=express();relay.disable('x-powered-by');relay.use(createSupabaseRelay({upstream:config.url}));
+    server.middlewares.use('/api/supabase',relay);
+  }},{ name: "test-network-isolation", transformIndexHtml: (html) => testHtml(html, localTest) }, react()].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
