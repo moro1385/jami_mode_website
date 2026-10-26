@@ -1,8 +1,9 @@
+import {WorkflowActions} from '@/features/erp/presentation/WorkflowActions';
+import {Button} from '@/components/ui/button';
 import { useAuthStore } from '@/stores/authStore';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
 import { useAdminTickets } from '@/features/support/presentation/useAdminTickets';
 
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +14,7 @@ import {
 
 export default function AdminTickets() {
   const ownerId = useAuthStore(state => state.user?.id);
-  const { tickets, loading, error, retry, pending, toggle: toggleTicketStatus } = useAdminTickets(ownerId);
+  const { tickets, loading, error, retry } = useAdminTickets(ownerId);
 
   return (
     <div className="space-y-6">
@@ -98,14 +99,7 @@ export default function AdminTickets() {
                       {new Date(ticket.created_at).toLocaleDateString("fa-IR")}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={pending(ticket.id)}
-                        onClick={() => toggleTicketStatus(ticket)}
-                      >
-                        {ticket.status === "resolved" ? "تغییر به در انتظار بررسی" : "تغییر به پاسخ داده شده"}
-                      </Button>
+                      {ownerId&&<WorkflowActions key={ownerId+ticket.id} owner={ownerId} resource="tickets" row={{id:ticket.id,status:ticket.status}} refresh={retry}/>}
                     </td>
                   </tr>
                 ))

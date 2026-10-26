@@ -9,6 +9,8 @@ import { adminCustomers } from '@/features/customers/admin';
 import { toast } from 'sonner';
 
 const contactToast = vi.hoisted(() => vi.fn());
+const saveWorkflow=vi.hoisted(()=>vi.fn());
+vi.mock('@/features/erp/infrastructure/httpErp',async()=>{const actual=await vi.importActual<typeof import('@/features/erp/infrastructure/httpErp')>('@/features/erp/infrastructure/httpErp');return{...actual,erpApi:{save:saveWorkflow}};});
 vi.mock('@/stores/authStore', () => ({ useAuthStore: (select: (state: { user: { id: string } }) => unknown) => select({ user: { id: 'synthetic-admin' } }) }));
 vi.mock('@/features/support/admin', () => ({ adminSupport: { listTickets: vi.fn(), toggleTicket: vi.fn() } }));
 vi.mock('@/features/support/contact', () => ({ contactSupport: { submit: vi.fn() } }));
@@ -23,10 +25,15 @@ describe('support UI keeps failures separate from success', () => {
   it('keeps the pending ticket when the status update is denied', async () => {
     vi.mocked(adminSupport.listTickets).mockResolvedValue([{ id: 'ticket-A', first_name: 'A', last_name: 'B',
       email: null, subject: 'Synthetic', message: 'Body', status: 'pending', created_at: '2026-10-01' }]);
-    vi.mocked(adminSupport.toggleTicket).mockRejectedValue({ code: '42501' });
+    saveWorkflow.mockRejectedValue(Error('workflow unavailable'));
     render(<AdminTickets />);
-    fireEvent.click(await screen.findByRole('button', { name: 'تغییر به پاسخ داده شده' }));
-    await waitFor(() => expect(toast.error).toHaveBeenCalledWith('خطا در تغییر وضعیت تیکت'));
+    fireEvent.click(await screen.findByRole('button', { name: 'انتقال به رسیدگی‌شده' }));
+    fireEvent.change(screen.getByLabelText('دلیل عملیات'),{target:{value:'support review'}});
+    fireEvent.click(screen.getByRole('button',{name:'پیش‌نمایش عملیات'}));
+    expect(saveWorkflow).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button',{name:'تأیید و ثبت عملیات'}));
+    await screen.findByText(/نتیجه تأیید نشد/);
+    expect(adminSupport.toggleTicket).not.toHaveBeenCalled();
     expect(screen.getByText('در انتظار بررسی')).toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
   });

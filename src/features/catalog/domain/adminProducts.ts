@@ -53,10 +53,10 @@ export function productFormWrite(values: ProductWrite): ProductWrite {
 }
 
 export function variantFormWrite(productId: string, values: VariantFormValues): VariantWrite {
-  // Preserve existing coercion; validation/inventory changes belong to Phase 2.
+  if (values.stock_quantity !== '' && values.stock_quantity !== '0') throw Error('تنوع تازه باید با موجودی صفر ساخته شود؛ سپس از اصلاح موجودی استفاده کنید.');
   return {
     product_id: productId, size: values.size || null, color: values.color || null,
     price: values.price ? parseFloat(values.price) : null,
-    stock_quantity: parseInt(values.stock_quantity) || 0, sku: values.sku || null,
+    stock_quantity: 0, sku: values.sku || null,
   };
 }

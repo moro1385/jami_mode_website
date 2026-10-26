@@ -1,3 +1,7 @@
+import {AdminPageHeader,AdminStat,AdminBadge} from '@/components/admin/AdminPrimitives';
+import { categoryFilterLabel } from '@/features/catalog/domain/productCategories';
+import { filterAdminProducts, MAX_PRODUCT_BATCH, type ProductStatusFilter } from '@/features/catalog/domain/productManagement';
+import { ProductManagementToolbar } from '@/features/catalog/presentation/ProductManagementToolbar';
 import { useAuthStore } from '@/stores/authStore';
 import { useAdminProducts } from '@/features/catalog/presentation/useAdminProducts';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
@@ -7,7 +11,7 @@ import { useEffect, useState } from "react";
 import type { AdminProduct as Product } from "@/features/catalog/admin";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus, Edit, Trash2, Loader2, Copy } from "lucide-react";
+import { Plus, Edit, Loader2, Copy, Package, CheckCircle2, Files, MousePointer2 } from "lucide-react";
 import { toast } from "sonner";
 import { ProductFormDialog } from "@/components/admin/ProductFormDialog";
 import { Input } from "@/components/ui/input";
@@ -110,8 +114,13 @@ export default function AdminProducts() {
  return <AdminProductsContent key={ownerId ?? 'signed-out'} ownerId={ownerId} />;
 }
 function AdminProductsContent({ ownerId }: { ownerId?: string }) {
-  const { products, loading: isLoading, error, retry: fetchProducts, pending, remove, duplicate: handleDuplicateProduct, changePrice } = useAdminProducts(ownerId);
+  const { products, loading: isLoading, error, retry: fetchProducts, pending, duplicate: handleDuplicateProduct, changePrice, bulkStatus, bulkPrices, bulkCategories, bulkImages, bulkImageUploads, batchKind, batchReport, busy } = useAdminProducts(ownerId);
 
+  const [search, setSearch] = useState(''), [status, setStatus] = useState<ProductStatusFilter>('all');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const visible = filterAdminProducts(products, search, status);
+  const selected = visible.filter(product => selectedIds.includes(product.id));
+  const toggle = (id: string) => setSelectedIds(ids => ids.includes(id) ? ids.filter(value => value !== id) : ids.length < MAX_PRODUCT_BATCH ? [...ids, id] : ids);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
 
@@ -125,25 +134,11 @@ function AdminProductsContent({ ownerId }: { ownerId?: string }) {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteProduct = (id: string) => {
-    if (window.confirm('آیا مطمئن هستید که می‌خواهید این محصول را حذف کنید؟')) void remove(id);
-  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">محصولات</h1>
-          <p className="text-muted-foreground mt-2">
-            محصولات فروشگاه خود را مدیریت کنید.
-          </p>
-        </div>
-        <Button onClick={handleAddProduct}>
-          <Plus className="w-4 h-4 ml-2" />
-          افزودن محصول
-        </Button>
-      </div>
-
+      <AdminPageHeader eyebrow="کاتالوگ فروشگاه" title="محصولات" description="محصولات را پیدا کنید، ویرایش کنید و برای فروش آماده نگه دارید." action={<Button disabled={busy} onClick={handleAddProduct}><Plus className="w-4 h-4 ml-2"/>افزودن محصول</Button>}/>
+      <div className="admin-stats"><AdminStat label="محصولات بارگیری‌شده" value={isLoading||error?undefined:products.length} icon={<Package/>}/><AdminStat label="محصول فعال" value={isLoading||error?undefined:products.filter(p=>p.is_active).length} icon={<CheckCircle2/>}/><AdminStat label="پیش‌نویس" value={isLoading||error?undefined:products.filter(p=>!p.is_active).length} icon={<Files/>}/><AdminStat label="انتخاب‌شده" value={selected.length} icon={<MousePointer2/>}/></div>
       <ProductFormDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
@@ -151,54 +146,47 @@ function AdminProductsContent({ ownerId }: { ownerId?: string }) {
         onSuccess={fetchProducts}
       />
 
-      <div className="bg-background rounded-2xl border">
+      <ProductManagementToolbar submitImageUploads={bulkImageUploads} submitImages={async targets => { const result = await bulkImages(targets); if (result) setSelectedIds(ids => ids.filter(id => !result.succeeded.includes(id) && !result.unchanged.includes(id))); return result; }} ownerId={ownerId} submitCategories={async (targets, edit) => { const result = await bulkCategories(targets, edit); if (result) setSelectedIds(ids => ids.filter(id => !result.succeeded.includes(id) && !result.unchanged.includes(id))); return result; }} search={search} status={status} changeSearch={value => { setSearch(value); setSelectedIds([]); }} changeStatus={value => { setStatus(value); setSelectedIds([]); }} selected={selected} busy={busy || isLoading || !!error || isDialogOpen} report={batchReport} reportKind={batchKind} submitPrices={async targets => { const result = await bulkPrices(targets); if (result) setSelectedIds(ids => ids.filter(id => !result.succeeded.includes(id) && !result.unchanged.includes(id))); return result; }} submit={async (targets, active) => { const result = await bulkStatus(targets, active); if (result) setSelectedIds(ids => ids.filter(id => !result.succeeded.includes(id) && !result.unchanged.includes(id))); return result; }} />
+      <div className="admin-table-note"><span>{visible.length.toLocaleString('fa-IR')} محصول از {products.length.toLocaleString('fa-IR')} محصول بارگیری‌شده</span><span>قیمت‌ها به ریال</span></div>
+      <div className="admin-card">
         {isLoading ? (
           <div className="flex justify-center p-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
           </div>
         ) : error ? (
           <ReadFailure retry={fetchProducts} message="بارگیری محصولات با شکست مواجه شد." />
-        ) : products.length === 0 ? (
+        ) : visible.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground">
-            هیچ محصولی پیدا نشد. برای شروع یکی اضافه کنید.
+            {products.length ? 'محصولی مطابق جست‌وجو و فیلتر پیدا نشد.' : 'هیچ محصولی پیدا نشد. برای شروع یکی اضافه کنید.'}
           </div>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead><input type="checkbox" aria-label="انتخاب محصولات نمایش‌داده‌شده" disabled={busy || !visible.length} checked={!!visible.length && visible.slice(0, MAX_PRODUCT_BATCH).every(product => selectedIds.includes(product.id))} onChange={event => setSelectedIds(event.target.checked ? visible.slice(0, MAX_PRODUCT_BATCH).map(product => product.id) : [])} /></TableHead>
                 <TableHead>نام</TableHead>
-                <TableHead>شناسه</TableHead>
+                <TableHead>بخش / نوع</TableHead>
                 <TableHead>قیمت</TableHead>
                 <TableHead>وضعیت</TableHead>
                 <TableHead className="text-left">عملیات</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {products.map((product) => (
+              {visible.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell className="text-muted-foreground">{product.slug}</TableCell>
+                  <TableCell><input type="checkbox" aria-label={`انتخاب ${product.name}`} checked={selectedIds.includes(product.id)} disabled={busy || (!selectedIds.includes(product.id) && selectedIds.length >= MAX_PRODUCT_BATCH)} onChange={() => toggle(product.id)} /></TableCell>
+                  <TableCell><div className="admin-product-name">{product.images?.[0]?<img src={product.images[0]} alt="" loading="lazy" referrerPolicy="no-referrer"/>:<span className="admin-product-placeholder"><Package aria-hidden="true"/></span>}<div><strong>{product.name}</strong><small dir="auto">{product.slug}</small></div></div></TableCell>
+                  <TableCell>{categoryFilterLabel(product)}</TableCell>
                   <EditablePriceCell product={product} busy={pending(product.id)} save={changePrice} />
                   <TableCell>
-                    {product.is_active ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                        فعال
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                        پیش‌نویس
-                      </span>
-                    )}
+                    <AdminBadge tone={product.is_active?'success':'neutral'}>{product.is_active?'فعال':'پیش‌نویس'}</AdminBadge>
                   </TableCell>
                   <TableCell className="text-left">
                     <Button variant="ghost" size="icon" className="h-8 w-8" disabled={pending(product.id)} onClick={() => handleDuplicateProduct(product)} title="کپی محصول">
                       <Copy className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={pending(product.id)} onClick={() => handleEditProduct(product)}>
+                    <Button variant="ghost" size="icon" className="h-8 w-8" disabled={pending(product.id)} onClick={() => handleEditProduct(product)} aria-label="ویرایش محصول">
                       <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={pending(product.id)} onClick={() => handleDeleteProduct(product.id)}>
-                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -206,7 +194,7 @@ function AdminProductsContent({ ownerId }: { ownerId?: string }) {
             </TableBody>
           </Table>
         )}
-      </div>
+      </div><details className="admin-help"><summary>راهنمای مدیریت محصولات</summary><p>برای توقف فروش، محصول را پیش‌نویس کنید. حذف دائمی محصول و تنوع برای حفظ سابقه بسته است. عملیات گروهی بعد از انتخاب محصول، پیش‌نمایش و تأیید جداگانه دارند.</p></details>
     </div>
   );
 }

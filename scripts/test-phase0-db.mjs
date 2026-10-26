@@ -70,6 +70,9 @@ try {
     for (const stream of [child.stdout, child.stderr]) stream.on('data', data => { output += data; for (const listener of listeners) listener(); });
     const done = new Promise((resolve, reject) => {
       child.on('error', reject);
+      // ON_ERROR_STOP may close a deliberately rejected contender before its
+      // final COMMIT is written. Preserve SQL exit/output as the test result.
+      child.stdin.on('error', error => { if (error.code !== 'EPIPE') reject(error); });
       child.on('close', code => { clearTimeout(timer); code === 0 ? resolve(output) : reject(new Error(`Race session failed (${code}): ${output}`)); });
     });
     const until = marker => Promise.race([new Promise(resolve => {
@@ -125,6 +128,40 @@ try {
   process.stdout.write(psql('-f', 'ops/validate-wallet-readiness.sql'));
   const { runWalletHttpAcceptance } = await import('./wallet-http-acceptance.mjs');
   await runWalletHttpAcceptance({ psql });
+  psql('-f', 'supabase/migrations/20261023222824_phase5_inventory_adjustments.sql');
+  const { runInventoryAdjustmentTests } = await import('./inventory-adjustment-db-tests.mjs');
+  psql('-f', 'supabase/migrations/20261024143147_phase5_inventory_write_boundary.sql');
+  const { runInventoryBoundaryTests } = await import('./inventory-boundary-db-tests.mjs');
+  await runInventoryBoundaryTests({ psql });
+  await runInventoryAdjustmentTests({ psql, interactive });
+  psql('-f','supabase/migrations/20261024191318_phase5_inventory_balance_report.sql');
+  const {runInventoryBalanceTests} = await import('./inventory-balance-db-tests.mjs');
+  await runInventoryBalanceTests({psql,interactive});
+  psql('-f','supabase/migrations/20261024193126_phase5_inventory_low_stock_policy.sql');
+  const {runInventoryPolicyTests}=await import('./inventory-policy-db-tests.mjs');
+  await runInventoryPolicyTests({psql,interactive});
+  psql('-f','supabase/migrations/20261024194520_phase5_inventory_alert_queue.sql');
+  const {runInventoryAlertTests}=await import('./inventory-alert-db-tests.mjs');
+  await runInventoryAlertTests({psql});
+  psql('-f','supabase/migrations/20261024200926_phase5_inventory_alert_followup.sql');
+  const {runInventoryFollowupTests}=await import('./inventory-followup-db-tests.mjs');
+  await runInventoryFollowupTests({psql,interactive});
+  psql('-f','supabase/migrations/20261024211002_phase5_inventory_followup_queue.sql');
+  const {runInventoryFollowupQueueTests}=await import('./inventory-followup-queue-db-tests.mjs');
+  await runInventoryFollowupQueueTests({psql});
+  psql('-f','supabase/migrations/20261024212044_phase5_inventory_alert_assignments.sql');
+  const {runInventoryAssignmentTests}=await import('./inventory-assignment-db-tests.mjs');
+  await runInventoryAssignmentTests({psql,interactive});
+  psql('-f','supabase/migrations/20261025123628_phase5_inventory_assignment_queue.sql');
+  const {runInventoryAssignmentQueueTests}=await import('./inventory-assignment-queue-db-tests.mjs');
+  await runInventoryAssignmentQueueTests({psql});
+  // This incremental containment harness does not replay every historical support table.
+  // The full bootstrap runner already includes these migrations in chronological order.
+  psql('-f','supabase/migrations/20260903000000_create_tickets_table.sql');
+  psql('-f','supabase/migrations/20260912000000_create_user_messages_table.sql');
+  psql('-f','supabase/migrations/20261025125109_phase5_erp_operations.sql');
+  const {runErpTests}=await import('./erp-db-tests.mjs');
+  await runErpTests({psql,interactive});
   console.log('Phase 0 follow-up database assertions passed (local disposable PostgreSQL; synthetic Auth/Storage).');
 } catch (error) {
   failed = true;
@@ -147,5 +184,5 @@ try {
   if (dirname(resolve(directory)) !== expectedParent || !directory.startsWith(join(expectedParent, 'jami-containment-'))) {
     throw new Error('Refusing cleanup outside the test temporary directory');
   }
-  if (safeToRemove) rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  if (safeToRemove) { rmSync(directory, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 }); console.log('DISPOSABLE_DB_CLEANUP stopped and removed own temporary cluster'); }
 }

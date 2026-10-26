@@ -1,13 +1,13 @@
+import {AdminPageHeader,AdminStat} from '@/components/admin/AdminPrimitives';
+import {adminDate} from '@/components/admin/adminFormat';
+import {WorkflowActions} from '@/features/erp/presentation/WorkflowActions';
 import { useAuthStore } from '@/stores/authStore';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
 import { useAdminOrders } from '@/features/orders/presentation/useAdminOrders';
-import { fulfillmentOptions } from "@/lib/orderFulfillment";
 import { useState } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Eye, Loader2 } from "lucide-react";
-import { format } from "date-fns";
 import { OrderDetailsDialog } from "@/components/shared/OrderDetailsDialog";
 
 
@@ -16,7 +16,7 @@ export default function AdminOrders() {
   return <AdminOrdersContent key={ownerId ?? 'signed-out'} ownerId={ownerId} />;
 }
 function AdminOrdersContent({ ownerId }: { ownerId?: string }) {
-  const { orders, loading: isLoading, error, retry, pending, changeStatus: updateOrderStatus } = useAdminOrders(ownerId);
+  const { orders, loading: isLoading, error, retry } = useAdminOrders(ownerId);
 
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -24,20 +24,15 @@ function AdminOrdersContent({ ownerId }: { ownerId?: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">سفارشات</h1>
-        <p className="text-muted-foreground mt-2">
-          سفارشات مشتریان را در اینجا مدیریت کنید.
-        </p>
-      </div>
-
+      <AdminPageHeader eyebrow="مدیریت فروش" title="سفارشات" description="وضعیت پرداخت، آماده‌سازی و ارسال سفارش‌ها را پیگیری کنید."/>
+      <div className="admin-stats"><AdminStat label="سفارش بارگیری‌شده" value={isLoading||error?undefined:orders.length}/><AdminStat label="در انتظار پرداخت" value={isLoading||error?undefined:orders.filter(o=>o.status==='pending_payment').length}/><AdminStat label="در حال آماده‌سازی" value={isLoading||error?undefined:orders.filter(o=>o.status==='processing').length}/><AdminStat label="ارسال‌شده" value={isLoading||error?undefined:orders.filter(o=>o.status==='shipped').length}/></div>
       <OrderDetailsDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         orderId={selectedOrderId}
       />
 
-      <div className="bg-background rounded-2xl border">
+      <div className="admin-card">
         {isLoading ? (
           <div className="flex justify-center p-8">
             <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -81,7 +76,7 @@ function AdminOrdersContent({ ownerId }: { ownerId?: string }) {
                       {order.id.slice(0, 8)}...
                     </TableCell>
                     <TableCell>
-                      {format(new Date(order.created_at), "MMM d, yyyy")}
+                      {adminDate(order.created_at)}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
@@ -93,43 +88,26 @@ function AdminOrdersContent({ ownerId }: { ownerId?: string }) {
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col gap-1 text-xs">
-                         <span>{order.shipping_method === 'express' ? "پست پیشتاز" : order.shipping_method === 'regular' ? "پست معمولی" : "N/A"}</span>
-                         <span className="text-muted-foreground capitalize">{order.payment_method === 'wallet' ? "کیف پول" : order.payment_method === 'gateway' ? "درگاه پرداخت" : order.payment_method || "N/A"}</span>
+                         <span>{order.shipping_method === 'express' ? "پست پیشتاز" : order.shipping_method === 'regular' ? "پست معمولی" : "ثبت نشده"}</span>
+                         <span className="text-muted-foreground capitalize">{order.payment_method === 'wallet' ? "کیف پول" : order.payment_method === 'gateway' ? "درگاه پرداخت" : order.payment_method || "ثبت نشده"}</span>
                       </div>
                     </TableCell>
                     <TableCell>{new Intl.NumberFormat('fa-IR').format(order.total_amount)} ریال</TableCell>
                     <TableCell>
-                      <Select
-                        value={order.status}
-
-                        disabled={pending(order.id) || fulfillmentOptions(order.status).length === 1}
-                        onValueChange={(value) => updateOrderStatus(order.id, value)}
-                      >
-                        <SelectTrigger className="w-[130px] h-8 text-xs">
-                          <SelectValue placeholder="وضعیت" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {fulfillmentOptions(order.status).map(status => (
-                            <SelectItem key={status} value={status}>{({
-                              pending_payment: "در انتظار پرداخت", payment_failed: "پرداخت ناموفق",
-                              pending: "در انتظار", confirmed: "تایید شده", processing: "در حال پردازش",
-                              shipped: "ارسال شده", delivered: "تحویل داده شده", cancelled: "لغو شده",
-                            } as Record<string, string>)[status] || status}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {ownerId&&<WorkflowActions key={ownerId+order.id} owner={ownerId} resource="orders" row={{id:order.id,status:order.status,paymentState:order.checkout_version===2?order.payment_state:'legacy',amount:String(order.total_amount)}} refresh={retry}/>}
+                      <a className="admin-order-history" href="/admin/erp?section=orders" onClick={event=>event.stopPropagation()}>سوابق و بازپرداخت</a>
                     </TableCell>
                     <TableCell className="text-left">
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
+                        size="sm"
+                        className="h-8 gap-2"
                         onClick={() => {
                           setSelectedOrderId(order.id);
                           setIsDialogOpen(true);
                         }}
                       >
-                        <Eye className="h-4 w-4" />
+                        <Eye className="h-4 w-4" /><span>جزئیات</span>
                       </Button>
                     </TableCell>
                   </TableRow>

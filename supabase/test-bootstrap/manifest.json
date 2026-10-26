@@ -225,6 +225,76 @@
       "sourceSha256": "7127bcb68d47e39442868039f5f0bc942e8d703aaf636b37dafc0da8ce121fde",
       "bootstrapSha256": "7127bcb68d47e39442868039f5f0bc942e8d703aaf636b37dafc0da8ce121fde",
       "correction": null
+    },
+    {
+      "order": 33,
+      "filename": "20261023222824_phase5_inventory_adjustments.sql",
+      "sourceSha256": "6a44e24d89c3374ae3b8ae00087cdf97160c55439e643ec73f3274d0bde1d92d",
+      "bootstrapSha256": "6a44e24d89c3374ae3b8ae00087cdf97160c55439e643ec73f3274d0bde1d92d",
+      "correction": null
+    },
+    {
+      "order": 34,
+      "filename": "20261024143147_phase5_inventory_write_boundary.sql",
+      "sourceSha256": "3d855a0e333aa8731edb77d1f8f30ee279ef4abb49568184513eb7b6d330adc8",
+      "bootstrapSha256": "3d855a0e333aa8731edb77d1f8f30ee279ef4abb49568184513eb7b6d330adc8",
+      "correction": null
+    },
+    {
+      "order": 35,
+      "filename": "20261024191318_phase5_inventory_balance_report.sql",
+      "sourceSha256": "44f939bc7e05170eed3a3673f67a28f732ef31da8719ee6db51e85828e254504",
+      "bootstrapSha256": "44f939bc7e05170eed3a3673f67a28f732ef31da8719ee6db51e85828e254504",
+      "correction": null
+    },
+    {
+      "order": 36,
+      "filename": "20261024193126_phase5_inventory_low_stock_policy.sql",
+      "sourceSha256": "2be9075ab949fdc1831345d3f56ec32b93bba14a425c942970d85ed847592b1f",
+      "bootstrapSha256": "2be9075ab949fdc1831345d3f56ec32b93bba14a425c942970d85ed847592b1f",
+      "correction": null
+    },
+    {
+      "order": 37,
+      "filename": "20261024194520_phase5_inventory_alert_queue.sql",
+      "sourceSha256": "50e9149bab47248df192a5612334dd74059fbea9408d7a8c23daed6dfbdc6d8f",
+      "bootstrapSha256": "50e9149bab47248df192a5612334dd74059fbea9408d7a8c23daed6dfbdc6d8f",
+      "correction": null
+    },
+    {
+      "order": 38,
+      "filename": "20261024200926_phase5_inventory_alert_followup.sql",
+      "sourceSha256": "45cdd250dd585994889f7d7886e18ed19307e1092063a4d0747a9382cda65abc",
+      "bootstrapSha256": "45cdd250dd585994889f7d7886e18ed19307e1092063a4d0747a9382cda65abc",
+      "correction": null
+    },
+    {
+      "order": 39,
+      "filename": "20261024211002_phase5_inventory_followup_queue.sql",
+      "sourceSha256": "24aea9f7ffa688a22cbea69c0fbd3322928749c438c08c257211d36a8aaabb50",
+      "bootstrapSha256": "24aea9f7ffa688a22cbea69c0fbd3322928749c438c08c257211d36a8aaabb50",
+      "correction": null
+    },
+    {
+      "order": 40,
+      "filename": "20261024212044_phase5_inventory_alert_assignments.sql",
+      "sourceSha256": "d5c6027640039a62472bb39a44e037a4b459391eb7a8575bec70bba2f0c8697c",
+      "bootstrapSha256": "d5c6027640039a62472bb39a44e037a4b459391eb7a8575bec70bba2f0c8697c",
+      "correction": null
+    },
+    {
+      "order": 41,
+      "filename": "20261025123628_phase5_inventory_assignment_queue.sql",
+      "sourceSha256": "c2c8f5ef3a95308ca6df0e83dbd29ff3972729456459d4892bb1de2e779b61d9",
+      "bootstrapSha256": "c2c8f5ef3a95308ca6df0e83dbd29ff3972729456459d4892bb1de2e779b61d9",
+      "correction": null
+    },
+    {
+      "order": 42,
+      "filename": "20261025125109_phase5_erp_operations.sql",
+      "sourceSha256": "4d8f1d28dabf4089af840459cfed1a0a71295c770030564ae127b6a988ef7054",
+      "bootstrapSha256": "4d8f1d28dabf4089af840459cfed1a0a71295c770030564ae127b6a988ef7054",
+      "correction": null
     }
   ],
   "preflight": {

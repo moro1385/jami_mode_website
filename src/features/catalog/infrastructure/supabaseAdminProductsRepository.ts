@@ -18,8 +18,8 @@ export function createSupabaseAdminProductsRepository(client: Pick<SupabaseClien
       if (error) throw error;
     },
     async deleteProduct(id) {
-      const { error } = await client.from('products').delete().eq('id', id);
-      if (error) throw error;
+      void id;
+      throw Error('حذف دائمی محصول بسته است؛ از وضعیت پیش‌نویس استفاده کنید.');
     },
     async listVariants(productId) {
       const { data, error } = await client.from('product_variants').select('*')
@@ -28,17 +28,19 @@ export function createSupabaseAdminProductsRepository(client: Pick<SupabaseClien
       return data ?? [];
     },
     async insertVariant(variant) {
-      const { data, error } = await client.from('product_variants').insert(variant).select().single();
+      if (variant.stock_quantity !== 0) throw Error('تنوع تازه باید با موجودی صفر ساخته شود.');
+      const { data, error } = await client.from('product_variants').insert({product_id:variant.product_id,size:variant.size,color:variant.color,sku:variant.sku,price:variant.price}).select().single();
       if (error) throw error;
       return data;
     },
     async updateVariant(id, patch) {
+      if ('stock_quantity' in patch) throw Error('ویرایش مستقیم موجودی در این مسیر مجاز نیست.');
       const { error } = await client.from('product_variants').update(patch).eq('id', id);
       if (error) throw error;
     },
     async deleteVariant(id) {
-      const { error } = await client.from('product_variants').delete().eq('id', id);
-      if (error) throw error;
+      void id;
+      throw Error('حذف دائمی تنوع برای حفظ موجودی و سابقه بسته است.');
     },
   };
 }

@@ -1,0 +1,33 @@
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {alertQueueResult} from '../server/inventory-alert-contract.js';
+export async function runInventoryAssignmentQueueTests({psql}){
+ let assertions=0;const quote=v=>"'"+String(v).replaceAll("'","''")+"'";
+ const query=sql=>psql('-c',sql).trim().split(/\r?\n/).at(-1),json=sql=>JSON.parse(query('SET ROLE service_role;'+sql));
+ const check=(a,b)=>{assert.deepEqual(a,b);assertions++;},reject=(sql,code)=>{let e;try{query(sql);}catch(f){e=f;}assert.ok(e);assert.ok(String(e.stderr??e.message).includes(code));assertions++;};
+ const actor=randomUUID(),other=randomUUID(),former=randomUUID(),customer=randomUUID(),product='ffffffff-ffff-4fff-8fff-fffffffffff3',floor={productId:'ffffffff-ffff-4fff-8fff-fffffffffff2',variantId:'00000000-0000-0000-0000-000000000000'};
+ const id=n=>'ad000000-0000-4000-8000-'+String(n).padStart(12,'0');
+ query(`INSERT INTO auth.users(id) VALUES('${actor}'),('${other}'),('${former}'),('${customer}');INSERT INTO public.user_roles(user_id,role) VALUES('${actor}','admin'),('${other}','admin'),('${former}','admin');INSERT INTO public.products(id,name,slug,price,is_active) VALUES('${product}','Assignment queue fixture','assignment-queue-${product}',10000,true)`);
+ query(`INSERT INTO public.product_variants(id,product_id,size,stock_quantity) VALUES ${Array.from({length:70},(_,n)=>`('${id(n+1)}','${product}','M',2)`).join(',')};INSERT INTO inventory_private.low_stock_policies(product_id,variant_id,threshold,revision,updated_by,request_id,updated_at) VALUES ${Array.from({length:70},(_,n)=>`('${product}','${id(n+1)}',5,1,'${actor}',gen_random_uuid(),now())`).join(',')}`);
+ query(`INSERT INTO inventory_private.alert_assignments(product_id,variant_id,revision,assignee_id,updated_by,request_id,updated_at) VALUES ${Array.from({length:70},(_,n)=>{const i=n+1,assignee=i<=55?actor:i<=60?other:i<=65?null:former;return `('${product}','${id(i)}',1,${assignee?quote(assignee):'NULL'},'${actor}',gen_random_uuid(),now())`;}).join(',')};DELETE FROM public.user_roles WHERE user_id='${former}';DELETE FROM public.product_variants WHERE id='${id(70)}'`);
+ query(`INSERT INTO inventory_private.alert_followups(product_id,variant_id,inventory_revision,policy_revision,revision,status,updated_by,request_id,updated_at) SELECT '${product}',id,inventory_revision,1,1,'reviewed','${actor}',gen_random_uuid(),now() FROM public.product_variants WHERE id IN ('${id(1)}','${id(2)}');UPDATE public.product_variants SET stock_quantity=3 WHERE id='${id(2)}';UPDATE public.product_variants SET stock_quantity=2 WHERE id='${id(2)}'`);
+ const call=(assignment='all',cursor=floor,filter='all',followup='all',who=actor,limit=50)=>`SELECT public.trusted_inventory_alerts_assigned('${who}','${filter}','${followup}','${assignment}',${cursor?quote(cursor.productId)+','+quote(cursor.variantId):'NULL,NULL'},${limit})`;
+ const page1=json(call()),last=page1.rows.at(-1),page2=json(call('all',{productId:last.productId,variantId:last.variantId}));check(page1.rows.length,50);check(page1.hasMore,true);check(page2.rows.length,20);check(page2.hasMore,false);
+ const all=[...page1.rows,...page2.rows];check(new Set(all.map(r=>r.variantId)).size,70);check(all.filter(r=>r.assigneeId===actor).length,55);check(all.filter(r=>r.assigneeId===null).length,5);check(all.filter(r=>r.assigneeId!==null&&!r.assigneeActive).length,5);
+ const mine=json(call('mine')),mineLast=mine.rows.at(-1),mineNext=json(call('mine',{productId:mineLast.productId,variantId:mineLast.variantId}));check(mine.rows.length,50);check(mineNext.rows.length,5);check(mineNext.hasMore,false);check([...mine.rows,...mineNext.rows].every(r=>r.assigneeId===actor&&r.assigneeActive),true);
+ const unassigned=json(call('unassigned')),inactive=json(call('inactive'));check(unassigned.rows.length,5);check(unassigned.rows.every(r=>r.assigneeId===null&&!r.assigneeActive),true);check(inactive.rows.length,5);check(inactive.rows.every(r=>r.assigneeId===former&&!r.assigneeActive),true);check(inactive.rows.some(r=>r.alert==='missing'),true);
+ check(json(call('mine',floor,'all','reviewed')).rows.map(r=>r.variantId),[id(1)]);check(json(call('mine',floor,'low','needs_review')).rows.map(r=>r.variantId),[id(2)]);check(json(call('unassigned',floor,'missing')).rows.length,0);check(json(call('inactive',floor,'missing')).rows.length,1);
+ const validated=alertQueueResult(mine,{filter:'all',followup:'all',assignment:'mine',cursor:floor,actor,withAssignment:true,withFollowup:true});check(validated.rows.length,50);check(validated.nextCursor.variantId,id(50));
+ // Assignment transfer is immediately reflected without mutating the review state.
+ query('UPDATE inventory_private.settings SET assignments_enabled=true');const context=json(`SELECT public.trusted_inventory_assignment('${actor}','${product}','${id(1)}')`);
+ json(`SELECT public.trusted_inventory_assignment_set('${actor}','${randomUUID()}','${product}','${id(1)}','${context.context.inventoryRevision}',1,1,'${other}','transfer queue fixture')`);
+ check(json(call('mine',floor,'all','reviewed')).rows.length,0);check(json(call('all',floor,'all','reviewed')).rows[0].assigneeId,other);
+ const stock=query(`SELECT sum(stock_quantity) FROM public.product_variants WHERE product_id='${product}'`),events=query('SELECT count(*) FROM inventory_private.assignment_events');query('BEGIN READ ONLY;SET ROLE service_role;'+call('mine')+';COMMIT');check(query(`SELECT sum(stock_quantity) FROM public.product_variants WHERE product_id='${product}'`),stock);check(query('SELECT count(*) FROM inventory_private.assignment_events'),events);
+ query('UPDATE inventory_private.settings SET assignments_enabled=false');check(json(call('unassigned')).rows.length,5);
+ for(const role of ['anon','authenticated'])reject(`SET ROLE ${role};${call()}`,'permission denied');
+ reject('SET ROLE service_role;'+call('mine',floor,'all','all',customer),'INVENTORY_FORBIDDEN');reject('SET ROLE service_role;'+call('bad'),'ALERT_INVALID');reject('SET ROLE service_role;'+call('mine',floor,'all','all',actor,51),'ALERT_INVALID');
+ reject(`SET ROLE service_role;SELECT public.trusted_inventory_alerts_assigned('${actor}','all','all',NULL,NULL,NULL,50)`,'ALERT_INVALID');
+ reject(`SET ROLE service_role;SELECT public.trusted_inventory_alerts_assigned('${actor}','all','all','mine','${product}',NULL,50)`,'ALERT_INVALID');
+ query(`DELETE FROM public.user_roles WHERE user_id='${actor}'`);reject('SET ROLE service_role;'+call('mine'),'INVENTORY_FORBIDDEN');
+ console.log('INVENTORY_ASSIGNMENT_QUEUE_DB_TEST_REPORT '+JSON.stringify({assertions,passed:true,productionAccess:false}));
+}

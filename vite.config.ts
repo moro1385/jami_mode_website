@@ -16,6 +16,7 @@ export default defineConfig(({ mode }) => {
     ...(localTest ? { fs: { strict: true, deny: ["**/.env*", "**/*.env*", "**/*.local", "**/*.{crt,pem}"] } } : {}),
     port: 8080,
     proxy: (mode === "development" || localTest) ? {
+      "/api/admin": { target: "http://127.0.0.1:3001" },
       "/api/bitpay": {
         target: "http://127.0.0.1:3001",
       },

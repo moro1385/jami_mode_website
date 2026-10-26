@@ -38,5 +38,15 @@ COMMIT;
 \ir migrations/20261022205522_phase1_wallet_topups.sql
 \ir migrations/20261022211146_phase1_wallet_interface.sql
 \ir migrations/20261022213205_phase1_wallet_readiness.sql
+\ir migrations/20261023222824_phase5_inventory_adjustments.sql
+\ir migrations/20261024143147_phase5_inventory_write_boundary.sql
+\ir migrations/20261024191318_phase5_inventory_balance_report.sql
+\ir migrations/20261024193126_phase5_inventory_low_stock_policy.sql
+\ir migrations/20261024194520_phase5_inventory_alert_queue.sql
+\ir migrations/20261024200926_phase5_inventory_alert_followup.sql
+\ir migrations/20261024211002_phase5_inventory_followup_queue.sql
+\ir migrations/20261024212044_phase5_inventory_alert_assignments.sql
+\ir migrations/20261025123628_phase5_inventory_assignment_queue.sql
+\ir migrations/20261025125109_phase5_erp_operations.sql
 \ir fixes.sql
 NOTIFY pgrst, 'reload schema';

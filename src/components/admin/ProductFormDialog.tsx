@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { getBrandOptions } from "@/lib/brands";
 import { colorNames } from "@/lib/translations";
 import { slugify } from "@/lib/slugify";
+import { ProductVariantsManager } from './ProductVariantsManager';
 import { ProductImagesManager } from "./ProductImagesManager";
 import { fetchCategories } from "@/services/products";
 import { X } from "lucide-react";
@@ -31,7 +32,7 @@ const productSchema = z.object({
   name: z.string().min(1, "Name is required"),
   slug: z.string().min(1, "Slug is required"),
   description: z.string().optional().nullable(),
-  price: z.coerce.number().min(0, "Price must be positive"),
+  price: z.coerce.number<number>().min(0, "Price must be positive"),
   is_active: z.boolean().default(true),
   is_out_of_stock: z.boolean().default(false),
   is_featured: z.boolean().default(false),
@@ -49,7 +50,8 @@ const productSchema = z.object({
 
 });
 
-type ProductFormValues = z.infer<typeof productSchema> & Pick<Product, "name" | "slug">;
+type ProductFormInput = z.input<typeof productSchema>;
+type ProductFormValues = z.output<typeof productSchema>;
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -72,7 +74,7 @@ function ProductFormDialogContent({ open, onOpenChange, product, onSuccess, owne
   const [tagInput, setTagInput] = useState("");
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
-  const form = useForm<ProductFormValues>({
+  const form = useForm<ProductFormInput, unknown, ProductFormValues>({
     resolver: zodResolver(productSchema),
     defaultValues: {
       name: "",
@@ -856,6 +858,7 @@ function ProductFormDialogContent({ open, onOpenChange, product, onSuccess, owne
         {product && (
           <div className="mt-8 space-y-8 border-t pt-4">
              <ProductImagesManager productId={product.id} />
+             <ProductVariantsManager productId={product.id} />
              </div>
         )}
 

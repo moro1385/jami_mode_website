@@ -22,10 +22,11 @@
     "build:local-test:offline": "node scripts/build-local-test-offline.mjs",
     "test:phase0:db": "node scripts/test-phase0-db.mjs",
     "maintenance": "node scripts/maintenance.mjs",
+    "test:admin:images:db": "node scripts/test-product-image-array-db.mjs",
     "test:e2e:offline": "node scripts/build-isolated.mjs production && playwright test --config playwright.offline.config.ts"
   },
   "dependencies": {
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.9.2",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-aspect-ratio": "^1.1.7",
@@ -63,7 +64,7 @@
     "express": "^4.22.3",
     "input-otp": "^1.4.2",
     "lucide-react": "^0.462.0",
-    "multer": "^2.4.0",
+    "multer": "^2.5.0",
     "next-themes": "^0.3.0",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
@@ -77,7 +78,7 @@
     "tailwind-merge": "3.7.0",
     "vaul": "^0.9.9",
     "vazirmatn": "^33.0.3",
-    "zod": "^3.25.76",
+    "zod": "^4.6.7",
     "zustand": "^5.0.14"
   },
   "devDependencies": {

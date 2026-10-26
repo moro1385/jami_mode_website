@@ -1,0 +1,9 @@
+# Inventory variant navigation — 2026-10-25
+
+The parent inventory summary retains its bounded 200-child view, clearly labeled as incomplete. A separate product dialog now reaches every variant through ascending UUID keyset pages of 50 (+1 sentinel), independently of the parent summary cap. It offers previous pages, refresh of the current page and restart from the first variant. No all-record total, frozen snapshot or search across unloaded children is claimed.
+
+Each request is one signed-in, RLS-enforced products GET with exact product ID, a child-only exclusive UUID filter, child order and child limit. There is no write or new migration/grant. The installed SDK query shape is tested. Missing parent, oversized child response, duplicate/reversed/foreign IDs and malformed product data reject; an empty continuation is valid and retains previous-page access. Invalid stock stays unknown instead of becoming zero.
+
+The dialog is owner/product/page scoped and hides stale completions. Main-screen owner changes remount the entire feature. Each loaded variant exposes the existing guarded adjustment/history, reservation-balance and low-stock-policy dialogs. A child action refreshes this page and the parent summary; read-only inspection does not adjust stock or acknowledge alerts. Dialog nesting and previous-page navigation were exercised in the browser.
+
+Evidence: 1,430 tests / 87 files and 64 intercepted offline browser scenarios passed, including 251 variants across pages, opening operations past variant 200 and returning to earlier pages. Typecheck/lint/isolated build and diff checks passed; final restart-control verification is recorded separately. Authenticated hosted acceptance and coordinated rollout remain required. No production action, commit/push/merge/deploy or new hosted migration occurred in this continuation.

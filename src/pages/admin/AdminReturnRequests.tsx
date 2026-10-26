@@ -10,13 +10,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 import PrivateReturnImage from '@/components/returns/PrivateReturnImage';
 
@@ -25,6 +18,7 @@ const statusTranslations: Record<string, string> = {
   approved: "تایید شده",
   rejected: "رد شده",
   completed: "تکمیل شده",
+  received: "دریافت مرجوعی", closed: "بسته‌شده",
 };
 
 const statusColors: Record<string, string> = {
@@ -36,7 +30,7 @@ const statusColors: Record<string, string> = {
 
 export default function AdminReturnRequests() {
   const ownerId = useAuthStore(state => state.user?.id);
-  const { requests, loading, error, retry, pending, changeStatus: updateRequestStatus } = useAdminReturns(ownerId);
+  const { requests, loading, error, retry } = useAdminReturns(ownerId);
 
   return (
     <div className="space-y-6">
@@ -159,21 +153,7 @@ export default function AdminReturnRequests() {
                         {new Date(req.created_at).toLocaleDateString("fa-IR")}
                       </td>
                       <td className="px-4 py-4 whitespace-nowrap">
-                        <Select
-                          value={req.status}
-                          disabled={pending(req.id)}
-                          onValueChange={(val) => updateRequestStatus(req.id, val)}
-                        >
-                          <SelectTrigger className="h-8 text-xs w-[130px]">
-                            <SelectValue placeholder="تغییر وضعیت" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">در انتظار بررسی</SelectItem>
-                            <SelectItem value="approved">تایید شده</SelectItem>
-                            <SelectItem value="rejected">رد شده</SelectItem>
-                            <SelectItem value="completed">تکمیل شده</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        <a className="underline" href="/admin/erp?section=returns">گردش مرجوعی و سابقه</a>
                       </td>
                     </tr>
                   );

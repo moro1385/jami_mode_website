@@ -1,3 +1,4 @@
+vi.mock('@/features/inventory/admin', () => ({ adminInventoryActions: {} }));
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import AdminProducts from '@/pages/admin/AdminProducts';

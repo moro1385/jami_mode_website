@@ -26,7 +26,18 @@ function port(): AdminProductsRepository {
   };
 }
 
-describe('admin product use cases retain existing write semantics', () => {
+describe('admin product use cases with audited stock boundary', () => {
+  it.each(['deleteProduct', 'deleteVariant'] as const)('blocks %s even when the supplied repository could delete', async method => {
+    const repository = port();
+    await expect(createAdminProductsService(repository)[method]('synthetic-id')).rejects.toThrow('حذف دائمی');
+    expect(repository.deleteProduct).not.toHaveBeenCalled();expect(repository.deleteVariant).not.toHaveBeenCalled();
+  });
+  it.each(['1', '-1', '1e3', 'NaN'])('refuses nonzero or malformed initial stock %s before insert', async stock_quantity => {
+    const repository = port();
+    await expect(createAdminProductsService(repository).addVariant(product.id,
+      {size:'M',color:'',sku:'',price:'',stock_quantity})).rejects.toThrow();
+    expect(repository.insertVariant).not.toHaveBeenCalled();
+  });
   it('copies attributes but never reuses identity, creation time or image attachments', async () => {
     const repository = port(), original = structuredClone(product);
     await createAdminProductsService(repository).duplicateProduct(product);
@@ -73,9 +84,9 @@ describe('admin product use cases retain existing write semantics', () => {
   it('clears an optional field without replacing the rest of the variant', async () => {
     const repository = port(), service = createAdminProductsService(repository);
     await service.updateVariantField(variant.id, 'size', '');
-    await service.updateVariantField(variant.id, 'stock_quantity', 0);
+    await expect(service.updateVariantField(variant.id, 'stock_quantity', 0)).rejects.toThrow();
     expect(repository.updateVariant).toHaveBeenNthCalledWith(1, variant.id, { size: null });
-    expect(repository.updateVariant).toHaveBeenNthCalledWith(2, variant.id, { stock_quantity: 0 });
+    expect(repository.updateVariant).toHaveBeenCalledTimes(1);
   });
 
   it('preserves unique-constraint errors so the UI can show the existing slug message', async () => {
@@ -98,6 +109,21 @@ function transport(data: unknown = [], error: unknown = null) {
 }
 
 describe('signed-in admin data adapter', () => {
+  it.each(['deleteProduct', 'deleteVariant'] as const)('blocks %s before any request', async method => {
+    const {repository,from} = transport();
+    await expect(repository[method]('synthetic-id')).rejects.toThrow('حذف دائمی');
+    expect(from).not.toHaveBeenCalled();
+  });
+  it('refuses stock patches even alongside otherwise allowed identity fields before network access', async () => {
+    const {repository,from} = transport();
+    await expect(repository.updateVariant(variant.id, {size:'L',stock_quantity:0})).rejects.toThrow();
+    expect(from).not.toHaveBeenCalled();
+  });
+  it('refuses nonzero initial stock before network access', async () => {
+    const {repository,from} = transport();
+    await expect(repository.insertVariant({product_id:product.id,size:'M',color:null,sku:null,price:null,stock_quantity:2})).rejects.toThrow();
+    expect(from).not.toHaveBeenCalled();
+  });
   it('lists drafts as well as active products in the original order', async () => {
     const { repository, query, from } = transport([product]);
     expect(await repository.listProducts()).toEqual([product]);
@@ -109,9 +135,10 @@ describe('signed-in admin data adapter', () => {
   it('keeps each product update and delete bound to its supplied id', async () => {
     const { repository, query } = transport();
     await repository.updateProduct(product.id, { price: 60000 });
-    await repository.deleteProduct(product.id);
+    await expect(repository.deleteProduct(product.id)).rejects.toThrow('حذف دائمی');
     expect(query.update).toHaveBeenCalledWith({ price: 60000 });
-    expect(query.eq.mock.calls).toEqual([['id', product.id], ['id', product.id]]);
+    expect(query.eq.mock.calls).toEqual([['id', product.id]]);
+    expect(query.delete).not.toHaveBeenCalled();
   });
 
   it('retains the product insert array contract', async () => {
@@ -133,9 +160,10 @@ describe('signed-in admin data adapter', () => {
     const { repository, query } = transport(variant);
     const input = { product_id: product.id, size: 'M', color: null, price: null, stock_quantity: 0, sku: null };
     expect(await repository.insertVariant(input)).toBe(variant);
-    expect(query.insert).toHaveBeenCalledWith(input);
-    await repository.updateVariant(variant.id, { size: 'L' }); await repository.deleteVariant(variant.id);
-    expect(query.eq.mock.calls).toEqual([['id', variant.id], ['id', variant.id]]);
+    expect(query.insert).toHaveBeenCalledWith({product_id:product.id,size:'M',color:null,price:null,sku:null});
+    await repository.updateVariant(variant.id, { size: 'L' }); await expect(repository.deleteVariant(variant.id)).rejects.toThrow('حذف دائمی');
+    expect(query.eq.mock.calls).toEqual([['id', variant.id]]);
+    expect(query.delete).not.toHaveBeenCalled();
   });
 
   it('propagates RLS/permission failures without fallback clients or apparent success', async () => {
@@ -144,7 +172,7 @@ describe('signed-in admin data adapter', () => {
     await expect(repository.listProducts()).rejects.toBe(failure);
     await expect(repository.insertProduct({ name: 'x', slug: 'x' })).rejects.toBe(failure);
     await expect(repository.updateProduct(product.id, { price: 1 })).rejects.toBe(failure);
-    await expect(repository.deleteProduct(product.id)).rejects.toBe(failure);
+    await expect(repository.deleteProduct(product.id)).rejects.toThrow('حذف دائمی');
     await expect(repository.insertVariant({ product_id: product.id, size: 'M', color: null, price: null, sku: null, stock_quantity: 0 })).rejects.toBe(failure);
   });
 });

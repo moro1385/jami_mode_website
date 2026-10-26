@@ -1,0 +1,23 @@
+import {afterEach,beforeEach,expect,it,vi} from 'vitest';
+import {act,cleanup,fireEvent,render,screen} from '@testing-library/react';
+import {parseInventoryBalance} from './domain/balance';
+import {createInventoryReport} from './infrastructure/httpInventoryReport';
+import {InventoryBalanceDialog} from './presentation/InventoryBalanceDialog';
+import {adminInventoryReport} from './admin';
+vi.mock('./admin',()=>({adminInventoryReport:{read:vi.fn()}}));
+const id=(n:number)=>'a4000000-0000-4000-8000-'+String(n).padStart(12,'0');
+const row={productId:id(1),variantId:id(2),productName:'کالای گزارش',quantity:99,sku:'SKU',size:'M',color:'red'};
+const balance=()=>({version:1 as const,productId:id(1),variantId:id(2),available:8,reserved:'2',overdue:'1',paid:'3',released:'4',legacy:'0',reviewLines:'0',saleEnabled:true,asOf:'2026-10-24T19:00:00.123456Z'});
+beforeEach(()=>{vi.resetAllMocks();vi.spyOn(console,'error').mockImplementation(()=>{});vi.mocked(adminInventoryReport.read).mockResolvedValue(balance());});
+afterEach(()=>{cleanup();vi.restoreAllMocks();});
+it('keeps available stock separate and exact large counters as strings',()=>{expect(parseInventoryBalance({...balance(),paid:'9007199254740993'},id(1),id(2))).toMatchObject({available:8,reserved:'2',paid:'9007199254740993'});});
+it.each([{reserved:2},{overdue:'3'},{available:-1},{variantId:id(9)},{paid:'-1'},{reviewLines:'00'}])('refuses ambiguous report values %#',patch=>{expect(()=>parseInventoryBalance({...balance(),...patch},id(1),id(2))).toThrow();});
+it('reads with owner token, timeout and no-store without storage access or shared locks',async()=>{
+ const client={auth:{getSession:vi.fn().mockResolvedValue({data:{session:{user:{id:id(8)},access_token:'synthetic-token'}},error:null})}},send=vi.fn().mockResolvedValue(new Response(JSON.stringify(balance())));
+ expect(await createInventoryReport(client,send).read(id(8),id(1),id(2),()=>true)).toEqual(balance());expect(send).toHaveBeenCalledWith(expect.stringContaining('/api/admin/inventory/balance?'),expect.objectContaining({cache:'no-store',headers:{Authorization:'Bearer synthetic-token'}}));expect(send.mock.calls[0][1]).not.toHaveProperty('body');
+});
+it('does not send another account token',async()=>{const client={auth:{getSession:async()=>({data:{session:{user:{id:id(9)},access_token:'x'}},error:null})}},send=vi.fn();await expect(createInventoryReport(client,send).read(id(8),id(1),id(2),()=>true)).rejects.toThrow();expect(send).not.toHaveBeenCalled();});
+it('rejects a response arriving after the selection lifetime ends',async()=>{let current=true;const client={auth:{getSession:async()=>({data:{session:{user:{id:id(8)},access_token:'x'}},error:null})}},send=vi.fn(async()=>{current=false;return new Response(JSON.stringify(balance()));});await expect(createInventoryReport(client,send).read(id(8),id(1),id(2),()=>current)).rejects.toThrow();});
+it('shows the report snapshot rather than the older table stock or subtracting reservations twice',async()=>{render(<InventoryBalanceDialog ownerId={id(8)} row={row} close={vi.fn()}/>);await screen.findByText('۸');expect(screen.queryByText('۶')).not.toBeInTheDocument();expect(screen.getByText(/رزرو سفارش جدید قبلاً از مانده کم شده است/)).toBeInTheDocument();expect(screen.getByText(/پایان مهلت به‌تنهایی/)).toBeInTheDocument();});
+it('reports an unavailable read without fabricated zero stock and offers retry',async()=>{vi.mocked(adminInventoryReport.read).mockRejectedValueOnce(Error('گزارش تفکیک موجودی هنوز فعال نشده است.'));render(<InventoryBalanceDialog ownerId={id(8)} row={row} close={vi.fn()}/>);await screen.findByRole('alert');expect(screen.queryByText('ماندهٔ جاری برای رزرو')).not.toBeInTheDocument();fireEvent.click(screen.getByRole('button',{name:'بازخوانی تفکیک موجودی'}));await screen.findByText('ماندهٔ جاری برای رزرو');});
+it('ignores a closed dialog’s late result',async()=>{let finish!:(value:ReturnType<typeof balance>)=>void;vi.mocked(adminInventoryReport.read).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));const view=render(<InventoryBalanceDialog ownerId={id(8)} row={row} close={vi.fn()}/>);view.unmount();await act(async()=>finish(balance()));expect(screen.queryByText('ماندهٔ جاری برای رزرو')).not.toBeInTheDocument();});

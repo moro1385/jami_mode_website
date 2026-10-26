@@ -1,117 +1,13 @@
-import { useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
-import { LayoutDashboard, Package, ShoppingCart, Users, MessageSquare, Menu, RotateCcw, Mail } from "lucide-react";
-import ScrollToTop from "@/components/ScrollToTop";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-
-const navItems = [
-  { href: "/admin", label: "داشبورد", icon: LayoutDashboard },
-  { href: "/admin/products", label: "محصولات", icon: Package },
-  { href: "/admin/orders", label: "سفارشات", icon: ShoppingCart },
-  { href: "/admin/users", label: "کاربران", icon: Users },
-  { href: "/admin/tickets", label: "تیکت‌ها", icon: MessageSquare },
-  { href: "/admin/messages", label: "پیام‌ها", icon: Mail },
-  { href: "/admin/return-requests", label: "درخواست‌های مرجوعی", icon: RotateCcw },
-];
-
-export default function AdminLayout() {
-  const { pathname } = useLocation();
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  return (
-    <div className="min-h-screen flex bg-muted/20">
-      <ScrollToTop />
-
-      {/* Sidebar */}
-      <aside className="w-64 bg-background border-l flex flex-col hidden md:flex">
-        <div className="h-16 flex items-center px-6 border-b">
-          <Link to="/" className="text-xl font-light">
-            <span className="uppercase tracking-widest">Jami<span className="font-medium text-accent">Mode</span></span> <span className="text-sm text-muted-foreground mr-1">مدیریت</span>
-          </Link>
-        </div>
-        <nav className="flex-1 px-4 py-6 space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
-            const Icon = item.icon;
-
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-accent/10 text-accent"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <Icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 border-b bg-background flex items-center px-4 md:px-6 justify-between md:justify-end">
-          <div className="flex items-center md:hidden gap-2">
-            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">منوی مدیریت</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-64 p-0">
-                <div className="h-16 flex items-center px-6 border-b">
-                  <Link to="/" className="text-xl font-light" onClick={() => setIsMobileMenuOpen(false)}>
-                    <span className="uppercase tracking-widest">Jami<span className="font-medium text-accent">Mode</span></span> <span className="text-sm text-muted-foreground mr-1">مدیریت</span>
-                  </Link>
-                </div>
-                <nav className="flex-1 px-4 py-6 space-y-1">
-                  {navItems.map((item) => {
-                    const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(item.href));
-                    const Icon = item.icon;
-
-                    return (
-                      <Link
-                        key={item.href}
-                        to={item.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-                          isActive
-                            ? "bg-accent/10 text-accent"
-                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        <Icon className="w-5 h-5" />
-                        {item.label}
-                      </Link>
-                    );
-                  })}
-                </nav>
-              </SheetContent>
-            </Sheet>
-            <Link to="/" className="text-xl font-light">
-               <span className="uppercase tracking-widest">Jami<span className="font-medium text-accent">Mode</span></span>
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground">
-              بازگشت به فروشگاه
-            </Link>
-          </div>
-        </header>
-
-        <div className="flex-1 overflow-auto p-6 md:p-8">
-          <Outlet />
-        </div>
-      </main>
-    </div>
-  );
+import {useState} from 'react';
+import {Link,Outlet,useLocation} from 'react-router-dom';
+import {LayoutDashboard,Package,ShoppingCart,Users,MessageSquare,Menu,RotateCcw,Mail,ArrowUpLeft,ChartNoAxesCombined,Boxes} from 'lucide-react';
+import ScrollToTop from '@/components/ScrollToTop';
+import {Sheet,SheetContent,SheetTrigger,SheetHeader,SheetTitle} from '@/components/ui/sheet';
+import {Button} from '@/components/ui/button';
+import '@/styles/admin.css';
+const groups=[{title:'نمای کلی',items:[{href:'/admin',label:'داشبورد',icon:LayoutDashboard}]},{title:'مدیریت فروشگاه',items:[{href:'/admin/products',label:'محصولات',icon:Package},{href:'/admin/inventory',label:'انبار',icon:Boxes},{href:'/admin/orders',label:'سفارشات',icon:ShoppingCart},{href:'/admin/return-requests',label:'درخواست‌های مرجوعی',icon:RotateCcw}]},{title:'ارتباط با مشتری',items:[{href:'/admin/users',label:'کاربران',icon:Users},{href:'/admin/tickets',label:'تیکت‌ها',icon:MessageSquare},{href:'/admin/messages',label:'پیام‌ها',icon:Mail}]},{title:'گزارش و پیگیری',items:[{href:'/admin/erp',label:'عملیات و گزارش‌ها',icon:ChartNoAxesCombined}]}];
+export default function AdminLayout(){const {pathname}=useLocation(),[mobile,setMobile]=useState(false);const current=groups.flatMap(g=>g.items).find(item=>item.href===pathname)?.label??'مدیریت';
+ const brand=<div className="admin-brand"><span className="admin-brand-mark">J</span><div><strong>JAMI MODE</strong><small>پنل مدیریت فروشگاه</small></div></div>;
+ const nav=(close?:()=>void)=><nav className="admin-navigation" aria-label="بخش‌های مدیریت">{groups.map(group=><div className="admin-nav-group" key={group.title}><p className="admin-nav-label">{group.title}</p>{group.items.map(item=><Link key={item.href} to={item.href} onClick={close} aria-current={pathname===item.href?'page':undefined} className="admin-nav-item"><item.icon aria-hidden="true"/>{item.label}</Link>)}</div>)}</nav>;
+ return <div className="admin-shell"><ScrollToTop/><aside className="admin-sidebar">{brand}{nav()}<div className="admin-sidebar-foot">مدیریت ساده‌تر، فروش منظم‌تر</div></aside><main className="admin-main"><header className="admin-topbar"><div className="admin-mobile-menu"><Sheet open={mobile} onOpenChange={setMobile}><SheetTrigger asChild><Button variant="ghost" size="icon" aria-label="منوی مدیریت"><Menu/></Button></SheetTrigger><SheetContent side="right" className="w-72 p-0"><SheetHeader className="sr-only"><SheetTitle>منوی مدیریت</SheetTitle></SheetHeader>{brand}{nav(()=>setMobile(false))}</SheetContent></Sheet><span className="font-semibold text-xs">JAMI MODE</span></div><div className="admin-topbar-title"><span>مدیریت فروشگاه</span><span>/</span><strong>{current}</strong></div><Link to="/" className="admin-topbar-store">بازگشت به فروشگاه<ArrowUpLeft aria-hidden="true"/></Link></header><div className="admin-content"><Outlet/></div></main></div>;
 }

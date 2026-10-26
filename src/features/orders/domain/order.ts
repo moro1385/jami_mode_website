@@ -9,6 +9,7 @@ export type OrderItemSnapshot = {
 };
 export type AdminOrder = Omit<OrderSnapshot, 'shipping_address'> & {
   user_id: string;
+  checkout_version?: number; payment_state?: string;
   profiles: { first_name: string | null; last_name: string | null; phone: string | null } | null;
 };
 export type OrderDetails = { order: OrderSnapshot; items: OrderItemSnapshot[] };

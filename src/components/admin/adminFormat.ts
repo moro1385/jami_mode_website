@@ -1,0 +1,1 @@
+export function adminDate(value:string){const date=new Date(value);return Number.isFinite(date.getTime())?new Intl.DateTimeFormat('fa-IR',{year:'numeric',month:'short',day:'numeric'}).format(date):'—';}

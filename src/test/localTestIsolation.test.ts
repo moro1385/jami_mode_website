@@ -9,7 +9,9 @@ const publicEnv = { MODE: 'local-test', VITE_SUPABASE_URL: TEST_ORIGIN, VITE_SUP
 const backendEnv = { JAMI_TEST_SUPABASE_URL: TEST_ORIGIN, JAMI_TEST_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic', JAMI_TEST_SUPABASE_SECRET_KEY: 'sb_secret_synthetic' };
 describe('isolated fresh test bootstrap', () => {
   it('covers all originals exactly once, checks hashes and dependency order', () => {
-    expect(validateBootstrap().migrations).toHaveLength(32);
+    const migrations = validateBootstrap().migrations;
+    expect(migrations).toHaveLength(42);
+    expect(migrations.at(-1)?.filename).toBe('20261025125109_phase5_erp_operations.sql');
   });
   it('contains no synthetic Auth replacement or hostile fixture imports', () => {
     const script = readFileSync('supabase/test-bootstrap/bootstrap.psql', 'utf8');

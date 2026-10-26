@@ -1,3 +1,5 @@
+import { InventoryAdjustmentControls } from '@/features/inventory/presentation/InventoryAdjustmentControls';
+import type { AdjustmentRow } from '@/features/inventory/domain/adjustments';
 import { useAuthStore } from '@/stores/authStore';
 import { useProductVariants } from '@/features/catalog/presentation/useProductVariants';
 import { ReadFailure } from '@/shared/presentation/ReadFailure';
@@ -5,7 +7,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Trash2, Plus, Loader2, Save } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 
@@ -19,9 +21,12 @@ export function ProductVariantsManager({ productId }: ProductVariantsManagerProp
 }
 
 function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsManagerProps & { ownerId?: string }) {
-  const { variants, loading: isLoading, error, retry, editing, busy, update: handleUpdateVariant, add, remove } = useProductVariants(ownerId, productId);
+  const { variants, loading: isLoading, error, retry, editing, busy, update: handleUpdateVariant, add } = useProductVariants(ownerId, productId);
 
-  // State for new variant form
+  const [adjustmentRow, setAdjustmentRow] = useState<AdjustmentRow | null>(null);
+  const locked = busy || !!adjustmentRow || isLoading || !!error;
+
+  // New variants begin at zero; stock is changed only through audited adjustments.
   const [newVariant, setNewVariant] = useState({
     size: "",
     color: "",
@@ -34,11 +39,8 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
     if (!newVariant.size && !newVariant.color) { toast.error('حداقل وارد کردن سایز یا رنگ برای تنوع الزامی است.'); return; }
     if (await add(newVariant)) setNewVariant({ size: '', color: '', price: '', stock_quantity: '0', sku: '' });
   }
-  function handleDeleteVariant(id: string) {
-    if (window.confirm('این تنوع حذف شود؟')) void remove(id);
-  }
 
-  if (isLoading) {
+  if (isLoading && !adjustmentRow) {
     return (
       <div className="flex justify-center p-4">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -46,10 +48,15 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
     );
   }
 
-  if (error) return <ReadFailure retry={retry} message="بارگیری تنوع‌ها با شکست مواجه شد." />;
+  if (error && !adjustmentRow) return <ReadFailure retry={retry} message="بارگیری تنوع‌ها با شکست مواجه شد." />;
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-medium">تنوع‌ها</h3>
+      <p className="text-sm text-muted-foreground">برای تغییر موجودی، «اصلاح و تاریخچه» را باز کنید و دلیل بنویسید. تنوع تازه با موجودی صفر ساخته می‌شود.</p>
+      {adjustmentRow && ownerId && <InventoryAdjustmentControls ownerId={ownerId} row={adjustmentRow}
+        close={() => setAdjustmentRow(null)} refresh={retry} />}
+      {isLoading && <p role="status">در حال بازخوانی تنوع‌ها…</p>}
+      {error && <ReadFailure retry={retry} message="بارگیری تنوع‌ها با شکست مواجه شد." />}
 
       <div className="border rounded-md">
         <Table>
@@ -67,7 +74,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
             {variants.map((variant) => (
               <TableRow key={variant.id}>
                 <TableCell className="p-2">
-                  <Input disabled={busy}
+                  <Input disabled={locked}
                     value={variant.size || ""}
                     onChange={(e) => handleUpdateVariant(variant.id, 'size', e.target.value)}
                     className="h-8"
@@ -75,7 +82,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                   />
                 </TableCell>
                 <TableCell className="p-2">
-                  <Input disabled={busy}
+                  <Input disabled={locked}
                     value={variant.color || ""}
                     onChange={(e) => handleUpdateVariant(variant.id, 'color', e.target.value)}
                     className="h-8"
@@ -83,7 +90,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                   />
                 </TableCell>
                 <TableCell className="p-2">
-                  <Input disabled={busy}
+                  <Input disabled={locked}
                     type="number"
                     step="0.01"
                     value={variant.price || ""}
@@ -93,15 +100,16 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                   />
                 </TableCell>
                 <TableCell className="p-2">
-                  <Input disabled={busy}
-                    type="number"
-                    value={variant.stock_quantity}
-                    onChange={(e) => handleUpdateVariant(variant.id, 'stock_quantity', parseInt(e.target.value) || 0)}
-                    className="h-8"
-                  />
+                  <span>{Number.isInteger(variant.stock_quantity) && variant.stock_quantity >= 0 ? variant.stock_quantity : 'نامعتبر'}</span>
+                  <Button type="button" variant="outline" size="sm" disabled={locked || editing || !ownerId}
+                    onClick={() => setAdjustmentRow({productId, productName: 'تنوع محصول', variantId: variant.id,
+                      sku: variant.sku, size: variant.size, color: variant.color,
+                      quantity: Number.isInteger(variant.stock_quantity) && variant.stock_quantity >= 0 && variant.stock_quantity <= 2147483647 ? variant.stock_quantity : null})}>
+                    اصلاح و تاریخچه
+                  </Button>
                 </TableCell>
                 <TableCell className="p-2">
-                  <Input disabled={busy}
+                  <Input disabled={locked}
                     value={variant.sku || ""}
                     onChange={(e) => handleUpdateVariant(variant.id, 'sku', e.target.value)}
                     className="h-8"
@@ -109,9 +117,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                   />
                 </TableCell>
                 <TableCell className="p-2 text-left">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" disabled={busy || editing} onClick={() => handleDeleteVariant(variant.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <span className="text-xs text-muted-foreground">حذف دائمی بسته است</span>
                 </TableCell>
               </TableRow>
             ))}
@@ -119,7 +125,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
             {/* New Variant Row */}
             <TableRow className="bg-muted/30">
               <TableCell className="p-2">
-                <Input disabled={busy}
+                <Input disabled={locked}
                   value={newVariant.size}
                   onChange={(e) => setNewVariant({...newVariant, size: e.target.value})}
                   className="h-8 bg-background"
@@ -127,7 +133,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                 />
               </TableCell>
               <TableCell className="p-2">
-                <Input disabled={busy}
+                <Input disabled={locked}
                   value={newVariant.color}
                   onChange={(e) => setNewVariant({...newVariant, color: e.target.value})}
                   className="h-8 bg-background"
@@ -135,7 +141,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                 />
               </TableCell>
               <TableCell className="p-2">
-                <Input disabled={busy}
+                <Input disabled={locked}
                   type="number"
                   step="0.01"
                   value={newVariant.price}
@@ -145,15 +151,10 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                 />
               </TableCell>
               <TableCell className="p-2">
-                <Input disabled={busy}
-                  type="number"
-                  value={newVariant.stock_quantity}
-                  onChange={(e) => setNewVariant({...newVariant, stock_quantity: e.target.value})}
-                  className="h-8 bg-background"
-                />
+                <span>شروع با موجودی صفر</span>
               </TableCell>
               <TableCell className="p-2">
-                <Input disabled={busy}
+                <Input disabled={locked}
                   value={newVariant.sku}
                   onChange={(e) => setNewVariant({...newVariant, sku: e.target.value})}
                   className="h-8 bg-background"
@@ -161,7 +162,7 @@ function ProductVariantsManagerContent({ productId, ownerId }: ProductVariantsMa
                 />
               </TableCell>
               <TableCell className="p-2 text-left">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" disabled={busy || editing} onClick={handleAddVariant}>
+                <Button type="button" aria-label="افزودن تنوع با موجودی صفر" variant="ghost" size="icon" className="h-8 w-8 text-primary" disabled={locked || editing} onClick={handleAddVariant}>
                   <Plus className="h-4 w-4" />
                 </Button>
               </TableCell>

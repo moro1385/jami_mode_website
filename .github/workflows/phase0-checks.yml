@@ -2,7 +2,7 @@ name: Phase 0 checks
 on:
   pull_request:
   push:
-    branches: [main, security/first-containment]
+    branches: [main, security/first-containment, feature/phase5-admin-products]
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,3 +43,5 @@ jobs:
         run: npm run test:e2e:offline
       - run: npm run test:phase0:db
       - run: npm run test:bootstrap:db
+      - name: Confirm image-array predicates in a disposable local database
+        run: npm run test:admin:images:db
