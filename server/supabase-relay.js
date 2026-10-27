@@ -40,9 +40,33 @@ function permittedAuthorization(value) {
   try { return JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).role === 'authenticated'; } catch { return false; }
 }
 
+// Queue image reads separately so a gallery cannot consume account/Auth capacity.
+function imageCapacity(limit, maxQueued, waitMs) {
+  let active=0;const queue=new Set();
+  const drain=()=>{while(active<limit && queue.size)queue.values().next().value();};
+  return (req,res,next)=>{
+    let granted=false,done=false,timer;
+    const finish=()=>{
+      if(done)return;done=true;clearTimeout(timer);queue.delete(grant);
+      res.off('finish',finish);res.off('close',finish);req.off('aborted',finish);
+      if(granted)active--;drain();
+    };
+    const grant=()=>{
+      queue.delete(grant);if(done)return;
+      granted=true;active++;clearTimeout(timer);next();
+    };
+    res.once('finish',finish);res.once('close',finish);req.once('aborted',finish);
+    if(active<limit)return grant();
+    if(queue.size>=maxQueued)return res.status(503).set('Retry-After','2').json({code:'SUPABASE_RELAY_BUSY'});
+    queue.add(grant);
+    timer=setTimeout(()=>{queue.delete(grant);res.status(503).set('Retry-After','2').json({code:'SUPABASE_RELAY_BUSY'});},waitMs);
+  };
+}
+
 // This is a bounded public-client relay. It never supplies service-role credentials.
-export function createSupabaseRelay({upstream=process.env.SUPABASE_URL,send=(...args)=>fetch(...args),timeoutMs=30000,maxConcurrent=8,maxResponseBytes=32*1024*1024}={}) {
+export function createSupabaseRelay({upstream=process.env.SUPABASE_URL,send=(...args)=>fetch(...args),timeoutMs=30000,maxConcurrent=8,maxConcurrentImages=4,maxQueuedImages=64,imageQueueMs=10000,maxResponseBytes=32*1024*1024}={}) {
   const router=express.Router(); let active=0;
+  const imageLimit=imageCapacity(maxConcurrentImages,maxQueuedImages,imageQueueMs);
   let origin;
   try { origin=relayOrigin(upstream); } catch { /* Missing configuration fails closed. */ }
   const authLimit=createRateLimiter({limit:20});
@@ -56,6 +80,7 @@ export function createSupabaseRelay({upstream=process.env.SUPABASE_URL,send=(...
     const asset=/^\/storage\/v1\/(?:object|render\/image)\/(public|sign)\//.test(req.url) && ['GET','HEAD'].includes(req.method);
     if ((!asset && !publicKey(req.headers.apikey)) || !permittedAuthorization(req.headers.authorization)) return res.status(403).json({code:'SUPABASE_RELAY_PUBLIC_CLIENT_REQUIRED'});
     if (['accept-profile','content-profile'].some(name=>req.headers[name] && req.headers[name]!=='public')) return res.status(403).json({code:'SUPABASE_RELAY_SCHEMA_DENIED'});
+    if(asset){req.setTimeout(30000,()=>req.destroy());return imageLimit(req,res,next);}
     if (active>=maxConcurrent) return res.status(503).set('Retry-After','2').json({code:'SUPABASE_RELAY_BUSY'});
     req.setTimeout(30000,()=>req.destroy());
     active++;let released=false;const release=()=>{if(!released){released=true;active--;}};res.once('finish',release);res.once('close',release);
@@ -74,6 +99,9 @@ export function createSupabaseRelay({upstream=process.env.SUPABASE_URL,send=(...
       if(req.url.startsWith('/storage/v1/') && ['GET','HEAD'].includes(req.method) && response.ok && !/^image\/(?:jpeg|png|webp|gif|avif)(?:;|$)/i.test(response.headers.get('content-type')??'')){
         await response.body?.cancel();return res.status(502).json({code:'SUPABASE_RELAY_IMAGE_TYPE_DENIED'});
       }
+      // Only anonymous, successful public product images may enter a shared cache.
+      // Signed/return images, identity-bearing requests and all errors remain no-store.
+      if(response.status===200 && ['GET','HEAD'].includes(req.method) && !req.headers.authorization && !req.headers.range && !req.url.includes('?') && /^\/storage\/v1\/object\/public\/product-images\//.test(req.url))res.set('Cache-Control','public, max-age=300, s-maxage=300');
       res.status(response.status);for(const name of responseHeaders){const value=response.headers.get(name);if(value)res.set(name,value);}
       if(!response.body || req.method==='HEAD'){await response.body?.cancel();res.end();return;}
       const stream=Readable.fromWeb(response.body);let bytes=0;stream.on('data',chunk=>{bytes+=chunk.length;if(bytes>maxResponseBytes){controller.abort();stream.destroy(Error('Response limit'));}});

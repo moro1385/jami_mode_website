@@ -88,3 +88,56 @@ describe('Supabase SDK through the real HTTP relay',()=>{
   expect(calls.some(x=>x.path.includes('grant_type=refresh_token'))).toBe(true);expect(calls.at(-1)?.path).toContain('/auth/v1/logout');
  });
 });
+
+describe('gallery capacity and cache isolation',()=>{
+ const image='/storage/v1/object/public/product-images/test.webp';
+ const png=()=>new Response('synthetic-image',{headers:{'content-type':'image/webp'}});
+ it('queues a gallery and keeps profile reads available while image slots are full',async()=>{
+  const releases:((r:Response)=>void)[]=[];
+  const send=vi.fn((url:string)=>url.includes('/storage/')?new Promise<Response>(resolve=>releases.push(resolve)):Promise.resolve(new Response('[]',{headers:{'content-type':'application/json'}})));
+  const {request}=await start({send,maxConcurrent:1,maxConcurrentImages:1});
+  const first=request(image);await vi.waitFor(()=>expect(releases).toHaveLength(1));
+  const second=request(image+'2');
+  expect((await request('/rest/v1/profiles')).status).toBe(200);
+  expect(releases).toHaveLength(1);releases[0](png());expect((await first).status).toBe(200);
+  await vi.waitFor(()=>expect(releases).toHaveLength(2));releases[1](png());expect((await second).status).toBe(200);
+ });
+ it('bounds the waiting gallery and times it out without calling upstream',async()=>{
+  let release!:(r:Response)=>void;
+  const send=vi.fn(()=>new Promise<Response>(resolve=>{release=resolve;}));
+  const {request}=await start({send,maxConcurrentImages:1,maxQueuedImages:1,imageQueueMs:250});
+  const first=request(image);await vi.waitFor(()=>expect(send).toHaveBeenCalledOnce());
+  const second=request(image+'2');await new Promise(resolve=>setTimeout(resolve,30));
+  expect((await request(image+'3')).status).toBe(503);
+  const timedOut=await second;expect(timedOut.status).toBe(503);expect(timedOut.headers.get('cache-control')).toBe('no-store');expect(send).toHaveBeenCalledOnce();
+  release(png());expect((await first).status).toBe(200);
+  send.mockImplementation(()=>Promise.resolve(png()));expect((await request(image+'4')).status).toBe(200);
+ });
+ it('removes a disconnected waiting image and reuses capacity',async()=>{
+  let release!:(r:Response)=>void;const send=vi.fn(()=>new Promise<Response>(resolve=>{release=resolve;}));
+  const {request}=await start({send,maxConcurrentImages:1,maxQueuedImages:1});
+  const first=request(image);await vi.waitFor(()=>expect(send).toHaveBeenCalledOnce());
+  const controller=new AbortController();const cancelled=request(image+'2',{signal:controller.signal}).catch(()=>null);
+  await new Promise(resolve=>setTimeout(resolve,30));controller.abort();await cancelled;
+  await new Promise(resolve=>setTimeout(resolve,30));release(png());expect((await first).status).toBe(200);
+  send.mockImplementation(()=>Promise.resolve(png()));expect((await request(image+'3')).status).toBe(200);expect(send).toHaveBeenCalledTimes(2);
+ });
+ it('allows short caching only for anonymous public product images',async()=>{
+  const {request}=await start({send:vi.fn(()=>Promise.resolve(png()))});
+  expect((await request(image)).headers.get('cache-control')).toBe('public, max-age=300, s-maxage=300');
+ });
+ it.each([
+  {path:'/storage/v1/object/sign/return-request-images/test.webp?token=synthetic',headers:{}},
+  {path:'/storage/v1/object/public/return-request-images/test.webp',headers:{}},
+  {path:'/storage/v1/object/public/product-images/test.webp?token=synthetic',headers:{}},
+  {path:'/storage/v1/object/public/product-images/test.webp',headers:{authorization:'Bearer '+jwt('authenticated')}},
+  {path:'/storage/v1/object/public/product-images/test.webp',headers:{range:'bytes=0-5'}},
+ ])('never shares private, signed or partial image responses %#',async({path,headers})=>{
+  const {request}=await start({send:vi.fn(()=>Promise.resolve(png()))});
+  expect((await request(path,{headers})).headers.get('cache-control')).toBe('no-store');
+ });
+ it('never caches missing public images',async()=>{
+  const {request}=await start({send:vi.fn(()=>Promise.resolve(new Response('{"error":"missing"}',{status:404,headers:{'content-type':'application/json'}})))});
+  const response=await request(image);expect(response.status).toBe(404);expect(response.headers.get('cache-control')).toBe('no-store');
+ });
+});
