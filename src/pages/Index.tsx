@@ -10,12 +10,10 @@ export default function Index() {
   return (
     <>
       <SEO
-        title="جامی مد"
+        title="فروشگاه اینترنتی جوراب، لباس زیر و لباس راحتی"
         description="فروشگاه اینترنتی جوراب، لباس زیر، زیرپوش و لباس راحتی — ارسال سریع و کیفیت مطمئن."
       />
-      <FadeIn>
-        <CollectionSlider />
-      </FadeIn>
+      <CollectionSlider />
 
       <FadeIn>
         <CategoryQuickNav />

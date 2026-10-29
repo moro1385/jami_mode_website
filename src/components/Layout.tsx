@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import PageLoading from "./PageLoading";
 import { useAuthStore } from "@/stores/authStore";
 import { Outlet } from "react-router-dom";
 import { Link } from "react-router-dom";
@@ -14,7 +16,7 @@ const user = useAuthStore((s) => s.user);
       <ScrollToTop />
       <Header />
       <main className="flex-1 pt-[88px] md:pt-[104px] bg-warm-bg">
-        <Outlet />
+        <Suspense fallback={<PageLoading />}><Outlet /></Suspense>
       </main>
 
       {/* Pre-Footer CTA Banner */}

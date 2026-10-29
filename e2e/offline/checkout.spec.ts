@@ -922,3 +922,152 @@ test('Supabase login, catalog and stored images use only the site origin',async(
  await page.goto('/shop');const image=page.getByRole('img',{name:'تصویر مسیر داخلی',exact:true}).first();await expect(image).toBeVisible();await expect(image).toHaveAttribute('src','/api/supabase/storage/v1/object/public/product-images/relay.png');await expect.poll(()=>image.evaluate((img:HTMLImageElement)=>img.complete&&img.naturalWidth>0)).toBe(true);
  expect(relayed).toContain('/api/supabase/auth/v1/token');expect(relayed.some(p=>p.startsWith('/api/supabase/rest/v1/'))).toBe(true);expect(direct).toEqual([]);
 });
+
+
+test('a failed screen chunk shows the safe fallback and reload recovers without repeating payment',async({page})=>{
+ const fixture=await fixtures(page,{signedIn:false});
+ const pattern='**/assets/SignIn-*.js';await page.route(pattern,route=>route.abort());
+ await page.goto('/signin');
+ await expect(page.getByRole('heading',{name:'نمایش صفحه با مشکل روبه‌رو شد',exact:true})).toBeVisible();
+ await expect(page.getByRole('alert')).toContainText('وضعیت سفارش');
+ await page.evaluate(()=>localStorage.setItem('phase6-preserved-marker','preserved'));
+ await page.screenshot({path:'.phase3-e2e-artifacts/phase6-error-fallback.png',fullPage:true});
+ await page.unroute(pattern);await page.getByRole('button',{name:'بارگذاری دوبارهٔ صفحه',exact:true}).click();
+ await expect(page.getByLabel('شماره موبایل',{exact:true})).toBeVisible();
+ expect(await page.evaluate(()=>localStorage.getItem('phase6-preserved-marker'))).toBe('preserved');
+ expect(fixture.calls.filter(c=>c.path==='/api/bitpay/init'||c.path==='/api/bitpay/checkout'||c.path==='/api/wallet/pay')).toHaveLength(0);
+ expect(fixture.blocked).toEqual([]);
+});
+
+
+test('search metadata has one canonical without tracking parameters and resets after navigation',async({page})=>{
+ const fixture=await fixtures(page);
+ await page.goto('/product/phase-three-fixture?utm_source=synthetic');
+ await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2);
+ await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+ await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://jamimode.ir/product/phase-three-fixture');
+ const schema=await page.locator('#product-structured-data').textContent();expect(JSON.parse(schema!).offers).toMatchObject({price:'7000',priceCurrency:'IRR',availability:'https://schema.org/InStock',url:'https://jamimode.ir/product/phase-three-fixture'});
+ await expect(page.locator('meta[name="description"]')).toHaveCount(1);
+ await page.getByRole('main').getByRole('link',{name:'فروشگاه',exact:true}).click();
+ await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href','https://jamimode.ir/shop');
+ await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+ expect(fixture.blocked).toHaveLength(0);
+});
+
+test('private account metadata excludes callback details and clears when returning to the shop',async({page})=>{
+ await fixtures(page);await page.goto('/account?token=synthetic-private-value');
+ await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content','noindex, follow');
+ await expect(page.locator('link[rel="canonical"]')).toHaveCount(0);
+ await expect(page.locator('meta[property="og:url"]')).toHaveCount(0);
+ await page.getByRole('link',{name:'ادامه خرید',exact:true}).click();
+ await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content','index, follow');
+ await expect(page.locator('link[rel="canonical"]')).toHaveCount(1);
+});
+
+test('out of stock search data matches the page and product text cannot inject a script',async({page})=>{
+ await fixtures(page);
+ await page.route('**/rest/v1/products?*',async route=>{
+  const row={id:productId,name:'محصول </script><script>window.seoInjected=true</script>',slug:item.productHandle,description:'توضیح آزمایشی',price:7000,is_active:true,is_out_of_stock:true,is_featured:true,is_new:true,images:['/placeholder.svg'],created_at:user.createdAt,tags:[],sizes:['M'],colors:[],brand:[],type:[],categories:null,product_images:[],product_variants:[]};
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(route.request().headers().accept?.includes('vnd.pgrst.object')?row:[row])});
+ });
+ await page.goto('/product/phase-three-fixture');
+ await expect(page.getByText('ناموجود',{exact:true}).first()).toBeVisible();
+ await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(2);
+ const data=JSON.parse((await page.locator('#product-structured-data').textContent())!);
+ expect(data.offers.availability).toBe('https://schema.org/OutOfStock');expect(data.name).toContain('</script>');
+ expect(await page.evaluate(()=>Object.hasOwn(window,'seoInjected'))).toBe(false);
+});
+
+
+test('home skips unrelated route scripts and preserves navigation while a product screen loads',async({page})=>{
+ await fixtures(page);const requested:string[]=[];
+ page.on('request',request=>{if(new URL(request.url()).pathname.endsWith('.js'))requested.push(new URL(request.url()).pathname);});
+ await page.goto('/');
+ const productLink=page.locator('main a[href="/product/phase-three-fixture"]').first();
+ await expect(productLink).toBeVisible();
+ expect(requested.some(path=>/\/(Shop|ProductDetail|Contact|SizeGuide)-/.test(path))).toBe(false);
+ let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});let waiting=false;
+ await page.route('**/assets/ProductDetail-*.js',async route=>{waiting=true;await gate;await route.continue();});
+ try{
+  await productLink.click();await expect.poll(()=>waiting).toBe(true);
+  await expect(page.getByRole('banner')).toBeVisible();await expect(page.getByRole('contentinfo')).toBeVisible();
+  // Router transitions retain the already visible page until its next screen is ready.
+  await expect(productLink).toBeVisible();
+ }finally{release();}
+ await expect(page.locator('#main-product-image')).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'در حال بارگذاری صفحه…'})).toHaveCount(0);
+});
+
+test('deferred informational and collection routes still render on direct visits',async({page})=>{
+ await fixtures(page);
+ for(const path of ['/about','/contact','/privacy-policy','/terms','/size-guide','/return-policy','/wholesale','/address','/faq','/order-tracking','/collections/core','/collections/sets-and-pairs']){
+  await page.goto(path);await expect(page.locator('main h1').first()).toBeVisible();
+  await expect(page.getByText('در حال بارگذاری صفحه…',{exact:true})).toHaveCount(0);
+  await expect(page.getByRole('banner')).toBeVisible();
+ }
+});
+
+
+test('a direct deferred-route visit exposes an accessible loading state without removing navigation',async({page})=>{
+ await fixtures(page);let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});
+ await page.route('**/assets/ProductDetail-*.js',async route=>{await gate;await route.continue();});
+ try{
+  await page.goto('/product/phase-three-fixture');
+  await expect(page.getByRole('status').filter({hasText:'در حال بارگذاری صفحه…'})).toBeVisible();
+  await expect(page.getByRole('banner')).toBeVisible();await expect(page.getByRole('contentinfo')).toBeVisible();
+ }finally{release();}
+ await expect(page.locator('#main-product-image')).toBeVisible();
+ await expect(page.getByRole('status').filter({hasText:'در حال بارگذاری صفحه…'})).toHaveCount(0);
+});
+
+
+test('the first home image is visible without a reveal observer on desktop and mobile',async({page})=>{
+ await fixtures(page);
+ await page.addInitScript(()=>{window.IntersectionObserver=class{root=null;rootMargin='0px';thresholds=[];observe(){}unobserve(){}disconnect(){}takeRecords(){return[];}} as unknown as typeof IntersectionObserver;});
+ for(const viewport of [{width:1365,height:900},{width:390,height:844}]){
+  await page.setViewportSize(viewport);await page.goto('/');
+  const hero=page.getByRole('region',{name:'Collections'}),first=hero.locator('img').first();
+  await expect(first).toHaveAttribute('loading','eager');await expect(first).toHaveAttribute('fetchpriority','high');
+  await expect.poll(()=>first.evaluate(node=>{let element:Element|null=node;while(element){const style=getComputedStyle(element);if(style.opacity==='0'||style.visibility==='hidden')return false;element=element.parentElement;}return true;})).toBe(true);
+  expect(await first.evaluate(node=>(node as HTMLImageElement).complete&&(node as HTMLImageElement).naturalWidth>0)).toBe(true);
+  const later=hero.locator('img').nth(1);await expect(later).toHaveAttribute('loading','lazy');await expect(later).toHaveAttribute('fetchpriority','low');
+  await page.screenshot({path:'.phase3-e2e-artifacts/hero-priority-'+viewport.width+'.png',fullPage:false});
+ }
+});
+
+test('the regular font preload reuses the hashed local stylesheet font without a duplicate request',async({page})=>{
+ await fixtures(page);const fonts:string[]=[];page.on('request',request=>{if(request.url().includes('Vazirmatn-FD-Regular-'))fonts.push(request.url());});
+ await page.goto('/');await page.evaluate(()=>document.fonts.ready.then(()=>true));
+ const preload=page.locator('link[rel="preload"][as="font"]');await expect(preload).toHaveCount(1);
+ const href=await preload.getAttribute('href');expect(href).toMatch(/^\/assets\/Vazirmatn-FD-Regular-[\w-]+\.woff2$/);
+ await expect(preload).toHaveAttribute('crossorigin','');
+ expect(fonts).toEqual(['http://127.0.0.1:4179'+href]);
+ expect(await page.evaluate(()=>document.fonts.check('16px "Vazirmatn FD"'))).toBe(true);
+ await expect(page.locator('link[href*="fonts.gstatic.com"]')).toHaveCount(0);
+});
+
+test('the main product image loads eagerly and gallery selection keeps storage traffic on the site origin',async({page})=>{
+ await fixtures(page);const images:string[]=[];page.on('request',request=>{if(request.url().includes('/storage/v1/'))images.push(request.url());});
+ const base='https://cifhcrlmjnsxpkhyloen.supabase.co/storage/v1/object/public/products/';
+ await page.route('**/rest/v1/products?*',async route=>{
+  const row={id:productId,name:item.productTitle,slug:item.productHandle,description:'توضیح آزمایشی',price:7000,is_active:true,is_out_of_stock:false,is_featured:true,is_new:true,images:[base+'one.svg',base+'two.svg'],created_at:user.createdAt,tags:[],sizes:['M'],colors:[],brand:[],type:[],categories:null,product_images:[],product_variants:[]};
+  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(route.request().headers().accept?.includes('vnd.pgrst.object')?row:[row])});
+ });
+ await page.route('**/storage/v1/object/public/products/*.svg',route=>route.fulfill({status:200,contentType:'image/svg+xml',body:'<svg xmlns="http://www.w3.org/2000/svg" width="40" height="50"><rect width="40" height="50" fill="#73543a"/></svg>'}));
+ await page.goto('/product/phase-three-fixture');const main=page.locator('#main-product-image');
+ await expect(main).toHaveAttribute('loading','eager');await expect(main).toHaveAttribute('fetchpriority','high');
+ await page.getByRole('button',{name:item.productTitle+' - تصویر 2',exact:true}).click();
+ await expect(main).toHaveAttribute('src',/\/api\/supabase\/storage\/v1\/object\/public\/products\/two\.svg$/);
+ await expect.poll(()=>main.evaluate(node=>(node as HTMLImageElement).complete&&(node as HTMLImageElement).naturalWidth>0)).toBe(true);
+ expect(images.length).toBeGreaterThan(0);expect(images.every(url=>url.startsWith('http://127.0.0.1:4179/api/supabase/storage/v1/'))).toBe(true);
+});
+
+
+test('home reads only the two displayed catalog lists without an unused general query',async({page})=>{
+ await fixtures(page);const reads:URL[]=[];
+ page.on('request',request=>{const url=new URL(request.url());if(url.pathname.endsWith('/rest/v1/products'))reads.push(url);});
+ await page.goto('/');await expect(page.locator('main a[href="/product/phase-three-fixture"]')).toHaveCount(2);
+ expect(reads).toHaveLength(2);expect(reads.filter(url=>url.searchParams.get('is_new')==='eq.true')).toHaveLength(1);
+ expect(reads.filter(url=>url.searchParams.get('is_featured')==='eq.true')).toHaveLength(1);
+ expect(reads.every(url=>url.searchParams.get('limit')==='12')).toBe(true);
+});

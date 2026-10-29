@@ -1,10 +1,10 @@
 import {supabaseAssetUrl} from '@/lib/supabaseRelay';
 import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadError';
 import { useMemo, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { useProduct, useProducts } from "@/hooks/useProducts";
-import { formatPrice, productImage, type CatalogProduct } from "@/services/products";
+import { useProduct, useRelatedProducts } from "@/hooks/useProducts";
+import { formatPrice, productImage } from "@/services/products";
 import { useCartStore } from "@/stores/cartStore";
 import { useAuthStore } from "@/stores/authStore";
 import { toast } from "sonner";
@@ -14,12 +14,13 @@ import DynamicSizeGuide from "@/components/DynamicSizeGuide";
 import { cn } from "@/lib/utils";
 import { colorNames, colorCodes } from "@/lib/translations";
 import SEO from "@/components/SEO";
+import { productJsonLd, productBreadcrumbs, serializeJsonLd } from "../../config/seo.js";
 import { Helmet } from "react-helmet-async";
 
 export default function ProductDetail() {
   const { slug } = useParams<{ slug: string }>();
   const { data: product, isLoading, error, refetch, isFetching } = useProduct(slug);
-  const { data: allProducts } = useProducts();
+  const { data: related = [], error: relatedError, refetch: refetchRelated, isFetching: isFetchingRelated } = useRelatedProducts(product);
   const addItem = useCartStore((s) => s.addItem);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated());
   const [quantity, setQuantity] = useState(1);
@@ -41,17 +42,6 @@ export default function ProductDetail() {
     return variants[0];
   }, [variants]);
 
-  const related = useMemo(() => {
-    if (!allProducts || !product) return [] as CatalogProduct[];
-    return allProducts
-      .filter(
-        (p) =>
-          p.node.handle !== product.node.handle &&
-          p.node.productType === product.node.productType
-      )
-      .slice(0, 3);
-  }, [allProducts, product]);
-
   if (isLoading) {
     return (
       <div className="flex justify-center py-32">
@@ -60,9 +50,16 @@ export default function ProductDetail() {
     );
   }
 
-  if (error) return <CatalogReadError retry={refetch} busy={isFetching} />;
+  if (error) return <><SEO title="دریافت اطلاعات محصول موقتاً ممکن نیست" description="دریافت اطلاعات این محصول انجام نشد؛ دوباره تلاش کنید." noindex/><CatalogReadError retry={refetch} busy={isFetching} /></>;
 
-  if (!product) return <Navigate to="/shop" replace />;
+  if (!product) return <>
+    <SEO title="محصول پیدا نشد" description="محصول مورد نظر در دسترس نیست. محصولات دیگر را در فروشگاه ببینید." noindex/>
+    <section className="max-w-3xl mx-auto px-6 py-20 text-center">
+      <h1 className="text-2xl font-bold mb-4">محصول پیدا نشد</h1>
+      <p className="text-muted-foreground mb-8">این محصول در دسترس نیست. می‌توانید محصولات دیگر را در فروشگاه ببینید.</p>
+      <Link to="/shop" className="underline underline-offset-4">مشاهدهٔ فروشگاه</Link>
+    </section>
+  </>;
 
   const isSoldOut = !selectedVariant?.availableForSale;
   const price = selectedVariant?.price ?? product.node.priceRange.minVariantPrice;
@@ -88,38 +85,34 @@ selectedSize: activeOptions["Size"] ?? null,
     setQuantity(1);
   };
 
-  const productSchema = {
-    "@context": "https://schema.org/",
-    "@type": "Product",
-    "name": product.node.title,
-    "description": product.node.description,
-    "image": [productImage(product)],
-    "offers": {
-      "@type": "Offer",
-      "priceCurrency": "IRR",
-      "price": product.node.priceRange.minVariantPrice.amount,
-      "availability": "https://schema.org/InStock",
-      "url": window.location.href
-    }
-  };
+  const breadcrumbs = productBreadcrumbs({name:product.node.title,slug:product.node.handle});
+  const productSchema = productJsonLd({name:product.node.title,description:product.node.description,
+    slug:product.node.handle,image:supabaseAssetUrl(productImage(product)),amount:price.amount,
+    currency:price.currencyCode,soldOut:isSoldOut});
 
   return (
     <>
       <SEO
         title={product.node.title}
         description={product.node.description ? (product.node.description.length > 155 ? product.node.description.substring(0, 155) + "..." : product.node.description) : "خرید از جامی مد"}
-        image={productImage(product)}
+        image={supabaseAssetUrl(productImage(product))}
       />
       <Helmet>
-        <script type="application/ld+json">
-          {JSON.stringify(productSchema)}
-        </script>
+        {productSchema && <script id="product-structured-data" type="application/ld+json">
+          {serializeJsonLd(productSchema)}
+        </script>}
+        {breadcrumbs && <script id="product-breadcrumbs" type="application/ld+json">{serializeJsonLd(breadcrumbs)}</script>}
       </Helmet>
       <section className="max-w-6xl mx-auto px-6 py-8">
-        <nav className="text-sm text-muted-foreground mb-6">
-          <Link to="/shop" className="hover:text-foreground transition-colors">فروشگاه</Link>
-          <span className="mx-2">›</span>
-          <span className="text-foreground">{product.node.title}</span>
+        <nav aria-label="مسیر راهنما" className="text-sm text-muted-foreground mb-6">
+          <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 break-words">
+            {breadcrumbs?.itemListElement.map((crumb,index)=><li key={crumb.position} className="inline-flex items-center gap-2">
+              {index>0&&<span aria-hidden="true">›</span>}
+              {index===breadcrumbs.itemListElement.length-1
+                ?<span aria-current="page" className="text-foreground">{crumb.name}</span>
+                :<Link to={new URL(crumb.item).pathname} className="hover:text-foreground transition-colors underline-offset-4 hover:underline">{crumb.name}</Link>}
+            </li>)}
+          </ol>
         </nav>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start">
@@ -136,7 +129,9 @@ selectedSize: activeOptions["Size"] ?? null,
                   alt={product.node.title}
                   className={cn("w-full h-full object-cover absolute top-0 left-0 hover:scale-110 transition-transform duration-500", isSoldOut && "grayscale opacity-75")}
                   id="main-product-image"
-                  loading="lazy"
+                  loading="eager"
+                  {...{fetchpriority:"high"}}
+                  decoding="async"
                 />
               </div>
             </div>
@@ -148,7 +143,7 @@ selectedSize: activeOptions["Size"] ?? null,
                     className="shrink-0 w-24 h-24 border focus:outline-hidden focus:ring-2 focus:ring-foreground snap-start bg-warm-bg rounded-2xl overflow-hidden"
                     onClick={() => {
                       const mainImg = document.getElementById('main-product-image');
-                      if (mainImg) (mainImg as HTMLImageElement).src = img.node?.url;
+                      if (mainImg) (mainImg as HTMLImageElement).src = supabaseAssetUrl(img.node?.url) || "/placeholder.svg";
                     }}
                   >
                     <img src={supabaseAssetUrl(img.node?.url)} className="w-full h-full object-cover" alt={`${product.node.title} - تصویر ${idx + 1}`} loading="lazy" />
@@ -231,14 +226,14 @@ selectedSize: activeOptions["Size"] ?? null,
         </div>
       </section>
 
-      {related.length > 0 && (
-        <section className="max-w-6xl mx-auto px-6 py-16">
-          <h2 className="text-2xl font-light text-foreground mb-8">شاید این‌ها را هم دوست داشته باشید</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      {(related.length > 0 || relatedError) && (
+        <section aria-labelledby="related-products-title" className="max-w-6xl mx-auto px-6 py-16">
+          <h2 id="related-products-title" className="text-2xl font-light text-foreground mb-8">شاید این‌ها را هم دوست داشته باشید</h2>
+          {relatedError ? <div role="alert"><p>دریافت پیشنهادها ممکن نیست.</p><button type="button" disabled={isFetchingRelated} onClick={()=>{void refetchRelated();}} className="mt-3 underline underline-offset-4">بررسی دوبارهٔ پیشنهادها</button></div> : <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             {related.map((p) => (
               <ProductCard key={p.node.id} product={p} />
             ))}
-          </div>
+          </div>}
         </section>
       )}
     </>

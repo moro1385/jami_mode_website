@@ -1,5 +1,5 @@
 import { catalogQueryKeys, catalogReadRetry } from './queryKeys';
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import {
   fetchActiveProducts,
   fetchFeaturedProducts,
@@ -68,4 +68,46 @@ export function useNewestProducts(first = 8) {
     retry: catalogReadRetry,
   });
   return { ...result, isEmpty: !result.isLoading && !result.isError && (result.data?.length ?? 0) === 0 };
+}
+
+/** Select one rail query without subscribing to the two unused lists. */
+export function useProductRail(type: 'featured' | 'newest' | 'query', first = 8, query?: string) {
+  const terms = parseLegacyQuery(query);
+  const result = useQuery<CatalogProduct[]>({
+    queryKey: type === 'featured' ? catalogQueryKeys.featured(first)
+      : type === 'newest' ? catalogQueryKeys.newest(first)
+      : catalogQueryKeys.products(undefined, undefined, terms, first),
+    queryFn: () => type === 'featured' ? fetchFeaturedProducts(first)
+      : type === 'newest' ? fetchNewestProducts(first)
+      : fetchActiveProducts({limit:first,terms}),
+    staleTime: 60_000,
+    retry: catalogReadRetry,
+  });
+  return {...result,isEmpty:!result.isLoading&&!result.isError&&(result.data?.length??0)===0};
+}
+
+/** Fixed public collections reuse the normal category caches and denial policy. */
+export function useCollectionProducts(categories: readonly string[]) {
+  const results = useQueries({queries:categories.map(category=>({
+    queryKey:catalogQueryKeys.products(undefined,category,[],100),
+    queryFn:()=>fetchActiveProducts({category,limit:100}),
+    staleTime:60_000,retry:catalogReadRetry,
+  }))});
+  const unique = new Map<string,CatalogProduct>();
+  for(const result of results)for(const product of result.data??[])unique.set(product.node.id,product);
+  const data=[...unique.values()].sort((a,b)=>b.node.createdAt.localeCompare(a.node.createdAt)||a.node.id.localeCompare(b.node.id));
+  const error=results.find(result=>result.isError)?.error;
+  return {data,error,isLoading:results.some(result=>result.isPending),isFetching:results.some(result=>result.isFetching),refetch:()=>Promise.all(results.map(result=>result.refetch()))};
+}
+
+/** Four category candidates leave up to three cards after excluding the current item. */
+export function useRelatedProducts(product?: CatalogProduct | null) {
+  const category=product?.node.category;
+  return useQuery<CatalogProduct[]>({
+    queryKey:catalogQueryKeys.products(undefined,category,[],4),
+    queryFn:()=>fetchActiveProducts({category:category!,limit:4}),
+    enabled:!!category,
+    staleTime:60_000,retry:catalogReadRetry,
+    select:rows=>rows.filter(row=>row.node.id!==product?.node.id).slice(0,3),
+  });
 }

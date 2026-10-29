@@ -2,7 +2,7 @@ import { CatalogReadError } from '@/features/catalog/presentation/CatalogReadErr
 import { Link } from "react-router-dom";
 import { Loader2, ChevronRight, ChevronLeft } from "lucide-react";
 import ProductCard from "@/components/ProductCard";
-import { useProducts, useFeaturedProducts, useNewestProducts } from "@/hooks/useProducts";
+import { useProductRail } from "@/hooks/useProducts";
 import { useRef, useState, useEffect, useMemo } from "react";
 
 interface ProductRailProps {
@@ -26,11 +26,7 @@ export default function ProductRail({
   ctaLabel,
   className,
 }: ProductRailProps) {
-  const queryResult = useProducts({ query, first: count });
-  const featuredResult = useFeaturedProducts(count);
-  const newestResult = useNewestProducts(count);
-
-  const result = type === 'featured' ? featuredResult : type === 'newest' ? newestResult : queryResult;
+  const result = useProductRail(type, count, query);
   const { data: products, isLoading, error, refetch, isFetching } = result;
 
   const items = useMemo(() => products ?? [], [products]);

@@ -1,0 +1,11 @@
+import {afterEach,expect,it,vi} from 'vitest';
+import {cleanup,renderHook,waitFor} from '@testing-library/react';
+import {QueryClient,QueryClientProvider} from '@tanstack/react-query';
+import {useProductRail} from './presentation/useProducts';
+import * as catalog from './catalog';
+vi.mock('./catalog',()=>({fetchActiveProducts:vi.fn(async()=>[]),fetchFeaturedProducts:vi.fn(async()=>[]),fetchNewestProducts:vi.fn(async()=>[]),fetchProductBySlug:vi.fn(),fetchProductsByCategory:vi.fn()}));
+afterEach(()=>{cleanup();vi.clearAllMocks();});
+function setup(){const client=new QueryClient({defaultOptions:{queries:{retry:false,gcTime:Infinity}}});return {client,wrapper:({children}:{children:React.ReactNode})=><QueryClientProvider client={client}>{children}</QueryClientProvider>};}
+it.each(['featured','newest','query'] as const)('only reads the displayed %s list',async type=>{const {wrapper}=setup();const hook=renderHook(()=>useProductRail(type,12),{wrapper});await waitFor(()=>expect(hook.result.current.isSuccess).toBe(true));expect(catalog.fetchActiveProducts).toHaveBeenCalledTimes(type==='query'?1:0);expect(catalog.fetchFeaturedProducts).toHaveBeenCalledTimes(type==='featured'?1:0);expect(catalog.fetchNewestProducts).toHaveBeenCalledTimes(type==='newest'?1:0);});
+it('switches list identity without refetching an already fresh list',async()=>{const {wrapper}=setup();const hook=renderHook(({type}:{type:'featured'|'newest'})=>useProductRail(type,12),{wrapper,initialProps:{type:'featured'}});await waitFor(()=>expect(hook.result.current.isSuccess).toBe(true));hook.rerender({type:'newest'});await waitFor(()=>expect(catalog.fetchNewestProducts).toHaveBeenCalledOnce());hook.rerender({type:'featured'});await waitFor(()=>expect(hook.result.current.isSuccess).toBe(true));expect(catalog.fetchFeaturedProducts).toHaveBeenCalledOnce();expect(catalog.fetchActiveProducts).not.toHaveBeenCalled();});
+it('exposes denied reads as errors, never empty success',async()=>{vi.mocked(catalog.fetchFeaturedProducts).mockRejectedValueOnce({code:'42501'});const {wrapper}=setup();const hook=renderHook(()=>useProductRail('featured',12),{wrapper});await waitFor(()=>expect(hook.result.current.isError).toBe(true));expect(hook.result.current.isEmpty).toBe(false);});
