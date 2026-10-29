@@ -1,5 +1,17 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+# Public resources needed to render the storefront. API authorization and RLS
+# still apply; auth, customer data, RPCs and private storage stay disallowed.
+Allow: /api/supabase/rest/v1/products$
+Allow: /api/supabase/rest/v1/products?
+Allow: /api/supabase/rest/v1/categories$
+Allow: /api/supabase/rest/v1/categories?
+Allow: /api/supabase/rest/v1/product_images$
+Allow: /api/supabase/rest/v1/product_images?
+Allow: /api/supabase/rest/v1/product_variants$
+Allow: /api/supabase/rest/v1/product_variants?
+Allow: /api/supabase/storage/v1/object/public/product-images/
+Allow: /api/supabase/storage/v1/render/image/public/product-images/
 Disallow: /torob_api/
 Sitemap: https://jamimode.ir/sitemap.xml

@@ -1,6 +1,7 @@
 import {escapeHtml} from '../../server/public-product-html.js';
 import {siteOrigin} from './site-health.mjs';
 import {SITE_ORIGIN,PUBLIC_PAGES,routeSeo} from '../../config/seo.js';
+import {inspectStorefrontRobots} from './robots-policy.mjs';
 
 // Intentionally accepts only our generated, flat sitemap dialect. No entities,
 // external references, nested sitemap crawling or arbitrary destinations.
@@ -36,7 +37,7 @@ export async function checkSiteSeo(raw,{send=fetch,timeoutMs=6000}={}){
   const job=(async()=>{const response=await send(origin+pathname,{method:'GET',headers:{accept:type},credentials:'omit',redirect:'error',cache:'no-store',signal:controller.signal});httpStatus=response.status;if(response.status!==status){await response.body?.cancel();throw Error('http_status');}if(!response.headers.get('content-type')?.toLowerCase().includes(type)){await response.body?.cancel();throw Error('content_type');}const text=await boundedText(response,limit);return validate(text,response);})();
   try{await Promise.race([job,new Promise((_resolve,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error('timeout'));},timeoutMs);})]);checks.push({name,ok:true,status:httpStatus,reason:'ok'});}catch(error){const allowed=['timeout','http_status','content_type','body_limit','empty_body','invalid_sitemap','missing_public_page','missing_head','invalid_title','invalid_description','invalid_robots','private_canonical','invalid_canonical','invalid_product_data','invalid_product_content','private_header','robots_policy'];checks.push({name,ok:false,status:httpStatus,reason:allowed.includes(error?.message)?error.message:'unavailable'});}finally{clearTimeout(timer);controller.abort();}
  }
- await probe('robots','/robots.txt',text=>{const lines=text.split(/\r?\n/).map(l=>l.replace(/#.*/,'').trim()).filter(Boolean);if(!lines.some(l=>/^Sitemap:\s*https:\/\/jamimode\.ir\/sitemap\.xml$/i.test(l)))throw Error('robots_policy');let active=false,seen=false;for(const line of lines){if(/^User-agent:/i.test(line)){active=/^User-agent:\s*\*$/i.test(line);seen||=active;}else if(active&&/^Disallow:\s*\/$/i.test(line))throw Error('robots_policy');}if(!seen)throw Error('robots_policy');},{type:'text/plain',limit:32768});
+ await probe('robots','/robots.txt',inspectStorefrontRobots,{type:'text/plain',limit:32768});
  await probe('sitemap','/sitemap.xml',text=>{sitemap=inspectSitemap(text);},{type:'application/xml',limit:2097152});
  for(const [name,p]of [['home','/'],['shop','/shop']])await probe(name,p,text=>inspectHtml(text,{canonical:SITE_ORIGIN+p}));
  await probe('account','/account',(text,response)=>{if(response.headers.get('x-robots-tag')!=='noindex, follow')throw Error('private_header');inspectHtml(text,{privatePage:true});});
