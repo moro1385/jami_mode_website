@@ -6,30 +6,32 @@ import { Loader2 } from "lucide-react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import RouteSEO from "@/components/RouteSEO";
 import Layout from "@/components/Layout";
 import Index from "./pages/Index";
-import Shop from "./pages/Shop";
-import About from "./pages/About";
-import Contact from "./pages/Contact";
-import PrivacyPolicy from "./pages/PrivacyPolicy";
-import TermsAndConditions from "./pages/TermsAndConditions";
-import SizeGuide from "./pages/SizeGuide";
-import ReturnPolicy from "./pages/ReturnPolicy";
-import Wholesale from "./pages/Wholesale";
-import StoreAddress from "./pages/StoreAddress";
-import FAQ from "./pages/FAQ";
-import OrderTracking from "./pages/OrderTracking";
 
-import Cart from "./pages/Cart";
-import ProductDetail from "./pages/ProductDetail";
-import CoreCollection from "./pages/CoreCollection";
-import SetsAndPairs from "./pages/SetsAndPairs";
 import RequireAuth from "./components/auth/RequireAuth";
 import RedirectIfAuthenticated from "./components/auth/RedirectIfAuthenticated";
 import RequireAdmin from "./components/auth/RequireAdmin";
 import NotFound from "./pages/NotFound";
 import CartSync from "./components/CartSync";
 import { CatalogCacheBridge } from "@/features/catalog/presentation/CatalogCacheBridge";
+
+const Shop = lazy(() => import("./pages/Shop"));
+const About = lazy(() => import("./pages/About"));
+const Contact = lazy(() => import("./pages/Contact"));
+const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
+const TermsAndConditions = lazy(() => import("./pages/TermsAndConditions"));
+const SizeGuide = lazy(() => import("./pages/SizeGuide"));
+const ReturnPolicy = lazy(() => import("./pages/ReturnPolicy"));
+const Wholesale = lazy(() => import("./pages/Wholesale"));
+const StoreAddress = lazy(() => import("./pages/StoreAddress"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const OrderTracking = lazy(() => import("./pages/OrderTracking"));
+const Cart = lazy(() => import("./pages/Cart"));
+const ProductDetail = lazy(() => import("./pages/ProductDetail"));
+const CoreCollection = lazy(() => import("./pages/CoreCollection"));
+const SetsAndPairs = lazy(() => import("./pages/SetsAndPairs"));
 
 const SignIn = lazy(() => import("./pages/SignIn"));
 const SignUp = lazy(() => import("./pages/SignUp"));
@@ -70,6 +72,7 @@ const App = () => {
         <Toaster />
         <Sonner position="top-center" />
         <BrowserRouter>
+          <RouteSEO />
           <Suspense fallback={<div className="flex justify-center items-center h-screen"><Loader2 className="w-8 h-8 animate-spin text-muted-foreground" /></div>}>
           <Routes>
             <Route element={<Layout />}>

@@ -52,6 +52,8 @@ export default function CollectionSlider() {
                     width={1920}
                     height={1080}
                     loading={index === 0 ? "eager" : "lazy"}
+                    {...{fetchpriority:index === 0 ? "high" : "low"}}
+                    decoding="async"
                     className="w-full h-full object-cover"
                   />
                   <div className="absolute inset-0 bg-[hsl(30_30%_18%/0.42)]" />

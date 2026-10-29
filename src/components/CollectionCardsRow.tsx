@@ -69,6 +69,7 @@ export default function CollectionCardsRow() {
   width={1920}
   height={1080}
   loading="lazy"
+  decoding="async"
   className="w-full aspect-[3/4] object-cover transition-transform duration-700 group-hover:scale-[1.04]"
 />
               </div>

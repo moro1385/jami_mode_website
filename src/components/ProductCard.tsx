@@ -1,5 +1,5 @@
 import {supabaseAssetUrl} from '@/lib/supabaseRelay';
-import { Link } from "react-router-dom";
+import ProductLink from "./ProductLink";
 import { formatPrice, productImage, type CatalogProduct } from "@/services/products";
 import { categoryNames } from "@/lib/translations";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ export default function ProductCard({ product }: { product: CatalogProduct }) {
   const price = priceRange.minVariantPrice;
 
   return (
-    <Link to={`/product/${handle}`} className="group relative block">
+    <ProductLink slug={handle} fallback="div" className="group relative block">
       <div className="relative overflow-hidden rounded-2xl bg-[hsl(var(--warm-bg))]">
         {!inStock && (
           <span className="absolute top-2 right-2 bg-white/90 text-red-600 text-xs font-bold px-2 py-1 rounded-md z-10">
@@ -22,6 +22,7 @@ export default function ProductCard({ product }: { product: CatalogProduct }) {
           alt={title}
           className={cn("w-full aspect-[4/5] object-cover transition-transform duration-500 group-hover:scale-105", !inStock && "grayscale opacity-75")}
           loading="lazy"
+          decoding="async"
           width={400}
           height={500}
         />
@@ -38,6 +39,7 @@ export default function ProductCard({ product }: { product: CatalogProduct }) {
                   alt={`${title} تصویر ${index + 1}`}
                   className="w-full h-full object-cover"
                   loading="lazy"
+          decoding="async"
                   width={48}
                   height={48}
                 />
@@ -64,6 +66,6 @@ export default function ProductCard({ product }: { product: CatalogProduct }) {
           </span>
         </div>
       </div>
-    </Link>
+    </ProductLink>
   );
 }

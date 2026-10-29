@@ -18,7 +18,7 @@ const safeDecode = (v) => { try { return decodeURIComponent(v); } catch { return
 const page = params.page;
 const page_unique = params.page_unique ? safeDecode(String(params.page_unique).trim()) : undefined;
 const page_url = params.page_url ? String(params.page_url).trim() : undefined;
-console.log("torob request:", req.headers["content-type"], Object.keys(params));
+
 
     let query = supabase
       .from("products")
@@ -79,8 +79,7 @@ console.log("torob request:", req.headers["content-type"], Object.keys(params));
       max_pages: Math.max(1, Math.ceil(allMatching.length / PRODUCTS_PER_PAGE)),
       products: pageItems.map(mapProduct),
     });
-  } catch (error) {
-    console.error("torob-routes error:", error.message);
+  } catch {
     res.status(500).json({ api_version: "torob_api_v3", count: "0", current_page: 1, max_pages: 0, products: [] });
   }
 });

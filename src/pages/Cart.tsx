@@ -5,6 +5,7 @@ import { ExternalLink, Loader2, X } from "lucide-react";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice } from "@/services/products";
 import QuantitySelector from "@/components/QuantitySelector";
+import ProductLink from "@/components/ProductLink";
 import SEO from "@/components/SEO";
 import { cartSummary } from "@/features/cart/domain/cart";
 import { colorNames } from "@/lib/translations";
@@ -64,9 +65,9 @@ const navigate = useNavigate();
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-base font-medium text-foreground">
-                    <Link to={`/product/${item.productHandle}`} className="hover:underline">
+                    <ProductLink slug={item.productHandle} className="hover:underline">
                       {item.productTitle}
-                    </Link>
+                    </ProductLink>
                   </h3>
                   {(item.selectedSize || item.selectedColor) && (
                     <p className="text-xs text-muted-foreground mt-1">

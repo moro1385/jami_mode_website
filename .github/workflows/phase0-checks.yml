@@ -2,7 +2,7 @@ name: Phase 0 checks
 on:
   pull_request:
   push:
-    branches: [main, security/first-containment, feature/phase5-admin-products]
+    branches: [main, security/first-containment, feature/**]
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,7 +29,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - name: Build without live sitemap/catalog access
-        run: node node_modules/vite/bin/vite.js build
+        run: npm run build:isolated
+      - name: Enforce initial JavaScript, stylesheet and font budgets
+        run: npm run check:build
       - name: Install PostgreSQL tools for disposable local clusters
         run: |
           sudo apt-get update -qq
