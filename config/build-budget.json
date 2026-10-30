@@ -1,6 +1,6 @@
 {
- "initialJsBytes":850000,
- "initialGzipBytes":260000,
+ "initialJsBytes":800000,
+ "initialGzipBytes":245000,
  "initialCssBytes":200000,
  "preloadedFontBytes":80000
 }

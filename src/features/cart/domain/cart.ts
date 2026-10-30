@@ -1,5 +1,5 @@
 import type { DisplayMoney } from '@/shared/domain/commerce';
-import { z } from 'zod';
+import { z } from 'zod/mini';
 
 export interface CartItem {
   id: string;
@@ -17,12 +17,12 @@ const cartItemSchema = z.object({
   id: z.string(), productId: z.string(), productTitle: z.string(),
   productHandle: z.string(), image: z.string(),
   price: z.object({ amount: z.string(), currencyCode: z.string() }),
-  quantity: z.number().int().positive().max(100),
-  selectedSize: z.string().nullable(), selectedColor: z.string().nullable(),
+  quantity: z.int().check(z.positive(), z.maximum(100)),
+  selectedSize: z.nullable(z.string()), selectedColor: z.nullable(z.string()),
 });
 
 export function validatedCartItems(value: unknown): CartItem[] | null {
-  const parsed = z.array(cartItemSchema).max(100).safeParse(value);
+  const parsed = z.array(cartItemSchema).check(z.maxLength(100)).safeParse(value);
   return parsed.success ? parsed.data.map(item => ({
     id: item.id, productId: item.productId, productTitle: item.productTitle,
     productHandle: item.productHandle, image: item.image,

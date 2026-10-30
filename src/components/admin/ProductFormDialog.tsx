@@ -6,7 +6,7 @@ import { errorMessage } from "@/lib/errors";
 import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import {productSchema,productFormParseOptions,type ProductFormInput,type ProductFormValues} from '@/features/catalog/domain/productForm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -27,31 +27,6 @@ import { fetchCategories } from "@/services/products";
 import { X } from "lucide-react";
 
 type Category = { id: string; name: string; slug: string };
-
-const productSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  slug: z.string().min(1, "Slug is required"),
-  description: z.string().optional().nullable(),
-  price: z.coerce.number<number>().min(0, "Price must be positive"),
-  is_active: z.boolean().default(true),
-  is_out_of_stock: z.boolean().default(false),
-  is_featured: z.boolean().default(false),
-  is_new: z.boolean().default(false),
-  category_id: z.string().optional().nullable(),
-  tags: z.array(z.string()).default([]),
-
-  department: z.string().optional().nullable(),
-  category: z.string().optional().nullable(),
-  type: z.array(z.string()).default([]),
-  colors: z.array(z.string()).default([]),
-  brand: z.array(z.string()).optional(),
-  pattern: z.string().optional().nullable(),
-  sizes: z.array(z.string()).default([]),
-
-});
-
-type ProductFormInput = z.input<typeof productSchema>;
-type ProductFormValues = z.output<typeof productSchema>;
 
 interface ProductFormDialogProps {
   open: boolean;
@@ -75,7 +50,7 @@ function ProductFormDialogContent({ open, onOpenChange, product, onSuccess, owne
   const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   const form = useForm<ProductFormInput, unknown, ProductFormValues>({
-    resolver: zodResolver(productSchema),
+    resolver: zodResolver(productSchema,productFormParseOptions),
     defaultValues: {
       name: "",
       slug: "",

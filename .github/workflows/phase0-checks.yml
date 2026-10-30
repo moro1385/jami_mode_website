@@ -32,6 +32,8 @@ jobs:
         run: npm run build:isolated
       - name: Enforce initial JavaScript, stylesheet and font budgets
         run: npm run check:build
+      - name: Check bounded static capacity on disposable loopback server
+        run: node scripts/check-static-capacity.mjs
       - name: Install PostgreSQL tools for disposable local clusters
         run: |
           sudo apt-get update -qq
